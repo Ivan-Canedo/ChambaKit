@@ -1,0 +1,463 @@
+"""Pruebas de la herramienta de registros locales (modo local), por su línea de comandos y sin red.
+
+Uso, con el Python de un entorno virtual que tiene openpyxl (CONTRIBUTING, «Pruebas»):
+    .venv/bin/python -I -B -m unittest discover -s herramientas/pruebas
+
+Sin openpyxl, se saltan. Cada prueba arma una copia ficticia con el script, el 11 de la plantilla, un
+04 con la zona horaria y un 06 con empresas ficticias. Los datos son sintéticos.
+"""
+import datetime as dt
+import importlib.util
+import json
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+
+RAIZ = pathlib.Path(__file__).resolve().parents[2]
+SCRIPT = RAIZ / "herramientas" / "registros.py"
+SIN_OPENPYXL = importlib.util.find_spec("openpyxl") is None
+
+PESTANAS = ["vacantes", "observaciones", "habilidades_vacante", "documentos", "busquedas", "evaluaciones",
+            "informes"]
+
+
+def modulo_04(zona_horaria="UTC"):
+    bloque = {"paises": {}, "localidades": [], "remoto": {"alcance": "cualquiera", "paises": []},
+              "zona_horaria": zona_horaria, "moneda": "XTS"}
+    return ("# 04 — Preferencias laborales\n\n## PREF-UBICACION — Región\n\nRegión.\n\n```json\n"
+            + json.dumps(bloque, indent=2) + "\n```\n")
+
+
+def modulo_06(ids):
+    filas = "".join(f"| {eid} | Empresa ficticia | Objetivo | Solo Code | 0.1 | 2026-10-16 |\n" for eid in ids)
+    return ("# 06 — Empresas objetivo y fichas\n\n## CAT-EMPRESAS — Catálogo\n\n"
+            "| ID | Empresa | Estado | Canal | Versión de ficha | Fecha de comprobación |\n"
+            "| --- | --- | --- | --- | --- | --- |\n" + filas + "\n## CAT-REGLAS — Mantenimiento\n\n- Reglas.\n")
+
+
+def busqueda_ficticia():
+    """Lo que registra una búsqueda ficticia, en todas las pestañas. VAC-0001 y OBS-0001 se citan entre sí."""
+    return {
+        "busquedas": [{"busqueda_id": "BUS-0001", "fecha_hora": "2026-03-02 09:30",
+                       "solicitud_alcance": "Búsqueda ficticia", "recursos_versiones": "07 v1.0 | 11 v1.0",
+                       "fuentes_consultas_filtros": "herramientas/buscar.py v1.0 | portal ficticio",
+                       "cobertura_limitaciones": "2 únicos de 2, completa", "no_revisado_pendientes": "Ninguno",
+                       "comparacion_anterior": "Sin búsqueda comparable", "canal": "Code"}],
+        "vacantes": [
+            {"vacante_id": "VAC-0001", "empresa_id": "EMP-XA", "job_id": "000123", "titulo": "Puesto ficticio",
+             "url_oficial": "https://example.com/empleo/000123", "ubicacion_literal": "Ciudad A1, País A",
+             "modalidad_literal": "Hybrid", "region_relacionada": "Dentro", "fecha_publicacion": "2026-02-20",
+             "primera_deteccion": "2026-03-02", "ultima_observacion_id": "OBS-0001"},
+            {"vacante_id": "VAC-0002", "empresa_id": "EMP-XA", "job_id": "No publicado", "titulo": "Otro puesto",
+             "ubicacion_literal": "No publicado", "modalidad_literal": "No publicado",
+             "region_relacionada": "Indeterminada", "primera_deteccion": "2026-03-02",
+             "ultima_observacion_id": "OBS-0002"}],
+        "observaciones": [
+            {"observacion_id": "OBS-0001", "vacante_id": "VAC-0001", "busqueda_id": "BUS-0001",
+             "fecha_verificacion": "2026-03-02", "estado_vigencia": "Confirmada abierta",
+             "motivo": "En listado oficial; detalle no consultado", "url_fuente": "https://example.com/empleo/000123",
+             "tipo_fuente": "Oficial"},
+            {"observacion_id": "OBS-0002", "vacante_id": "VAC-0002", "busqueda_id": "BUS-0001",
+             "fecha_verificacion": "2026-03-02 10:05", "estado_vigencia": "No verificable", "motivo": "error 404",
+             "tipo_fuente": "Oficial"}],
+        "habilidades_vacante": [
+            {"habilidad_observacion_id": "HV-00001", "vacante_id": "VAC-0001", "observacion_id": "OBS-0001",
+             "habilidad_literal": "Experience with Python", "habilidad_normalizada": "Python",
+             "tipo_requisito": "Obligatorio"}],
+        "documentos": [
+            {"documento_id": "DOC-0001", "vacante_id": "VAC-0001", "fecha_generacion": "2026-03-03",
+             "version_perfil": "1.10", "version_cv_base": "1.0", "idioma": "ES", "formato": "PDF",
+             "archivo": "CV_ficticio.pdf", "revision_visual": "Satisfactoria", "texto_extraible": "Satisfactoria"}],
+        "evaluaciones": [
+            {"evaluacion_id": "EVA-0001", "vacante_id": "VAC-0001", "observacion_id": "OBS-0001",
+             "fecha_evaluacion": "2026-03-02", "version_perfil": "1.10", "version_evaluacion": "1.0",
+             "condiciones": "Sin exclusiones", "condiciones_detalle": "Sueldo | Remoto", "encaje": "★★★☆☆",
+             "cobertura": "3/4", "nucleos": "Núcleo A: Directa"}],
+        "informes": [{"busqueda_id": "BUS-0001", "vacante_id": "VAC-0001", "evaluacion_id": "EVA-0001"}],
+    }
+
+
+@unittest.skipIf(SIN_OPENPYXL, "falta openpyxl: corre las pruebas con el Python del entorno virtual")
+class CopiaFicticia(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = pathlib.Path(self._tmp.name)
+        (self.dir / "herramientas").mkdir()
+        shutil.copy(SCRIPT, self.dir / "herramientas")
+        shutil.copy(RAIZ / "11_ESQUEMAS_DE_REGISTROS.md", self.dir)
+        (self.dir / "04_PREFERENCIAS_LABORALES.md").write_text(modulo_04(), encoding="utf-8")
+        (self.dir / "06_EMPRESAS_OBJETIVO.md").write_text(modulo_06(["EMP-XA", "EMP-PRUEBA"]), encoding="utf-8")
+        self.archivo = self.dir / "ChambaKit_Registros.xlsx"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def correr(self, *argumentos, entrada=None):
+        """El script de la copia por su línea de comandos; entrada, el JSON que recibe por stdin."""
+        return subprocess.run([sys.executable, "-I", "-B", str(self.dir / "herramientas" / "registros.py"),
+                               *argumentos], input=None if entrada is None else json.dumps(entrada),
+                              capture_output=True, text=True, timeout=60)
+
+    def ok(self, *argumentos, entrada=None):
+        r = self.correr(*argumentos, entrada=entrada)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return json.loads(r.stdout)
+
+    def leer(self, pestana, *argumentos):
+        return self.ok("leer", pestana, *argumentos)
+
+    def assertRechazaSinEscribir(self, orden, entrada, *textos):
+        antes = self.archivo.read_bytes()
+        r = self.correr(orden, entrada=entrada)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        for t in textos:
+            self.assertIn(t, r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertEqual(r.stdout, "")
+        self.assertEqual(self.archivo.read_bytes(), antes)
+
+
+class Crear(CopiaFicticia):
+    def test_crea_el_archivo_con_las_pestanas_del_esquema_vacias(self):
+        creado = self.ok("crear")
+        self.assertTrue(self.archivo.is_file())
+        self.assertEqual(list(creado["pestanas"]), PESTANAS)
+        self.assertEqual(creado["pestanas"]["busquedas"][0], "busqueda_id")
+        # informes guarda solo los IDs; las columnas calculadas las da el comando informe.
+        self.assertEqual(creado["pestanas"]["informes"], ["busqueda_id", "vacante_id", "evaluacion_id"])
+        for pestana in PESTANAS:
+            with self.subTest(pestana=pestana):
+                self.assertEqual(self.leer(pestana), [])
+
+    def test_no_sobrescribe_un_archivo_que_ya_existe(self):
+        self.ok("crear")
+        self.ok("agregar", entrada={"busquedas": busqueda_ficticia()["busquedas"]})
+        r = self.correr("crear")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("ya existe", r.stderr)
+        self.assertEqual(len(self.leer("busquedas")), 1)
+
+    def test_si_11_cambia_una_columna_avisa_que_el_archivo_no_coincide(self):
+        self.ok("crear")
+        modulo = self.dir / "11_ESQUEMAS_DE_REGISTROS.md"
+        texto = modulo.read_text(encoding="utf-8")
+        modulo.write_text(texto.replace('{"nombre": "canal",', '{"nombre": "canal_nuevo",'), encoding="utf-8")
+        r = self.correr("leer", "busquedas")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("canal_nuevo", r.stderr)
+        self.assertIn("Encabezados", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+
+class Agregar(CopiaFicticia):
+    def setUp(self):
+        super().setUp()
+        self.columnas = self.ok("crear")["pestanas"]
+
+    def test_agrega_las_filas_de_todas_las_pestanas_y_se_leen_tal_como_se_escribieron(self):
+        busqueda = busqueda_ficticia()
+        agregadas = self.ok("agregar", entrada=busqueda)
+        self.assertEqual(agregadas["agregadas"], {p: len(filas) for p, filas in busqueda.items()})
+        for pestana, filas in busqueda.items():
+            with self.subTest(pestana=pestana):
+                # Las columnas que la fila no trae se leen vacías; «000123» y «1.10» siguen siendo texto.
+                esperadas = [{c: f.get(c, "") for c in self.columnas[pestana]} for f in filas]
+                self.assertEqual(self.leer(pestana), esperadas)
+
+    def test_un_texto_que_empieza_con_igual_se_guarda_como_texto_y_no_como_formula(self):
+        import openpyxl
+        busqueda = busqueda_ficticia()
+        busqueda["habilidades_vacante"][0]["habilidad_literal"] = '=HYPERLINK("https://example.com","Python")'
+        self.ok("agregar", entrada=busqueda)
+        self.ok("actualizar", entrada={"observaciones": [{"observacion_id": "OBS-0002", "motivo": "=1+1"}]})
+        libro = openpyxl.load_workbook(self.archivo)
+        for hoja, celda in (("habilidades_vacante", "D2"), ("observaciones", "F3")):
+            with self.subTest(hoja=hoja):
+                self.assertEqual(libro[hoja][celda].data_type, "s")
+        self.assertEqual(self.leer("observaciones", "--id", "OBS-0002")[0]["motivo"], "=1+1")
+
+    def test_rechaza_las_filas_que_no_cumplen_el_esquema_y_no_escribe_ninguna(self):
+        def con(pestana, cambios, indice=0):
+            busqueda = busqueda_ficticia()
+            busqueda[pestana][indice].update(cambios)
+            return busqueda
+
+        def sin(pestana, columna):
+            busqueda = busqueda_ficticia()
+            del busqueda[pestana][0][columna]
+            return busqueda
+
+        repetida = busqueda_ficticia()
+        repetida["habilidades_vacante"].append(dict(repetida["habilidades_vacante"][0], habilidad_literal="Python"))
+        informe_doble = busqueda_ficticia()
+        informe_doble["informes"].append(dict(informe_doble["informes"][0]))
+        casos = {
+            "fecha irreal": (con("vacantes", {"fecha_publicacion": "2026-13-45"}), "fecha_publicacion"),
+            "hora donde no se admite": (con("evaluaciones", {"fecha_evaluacion": "2026-03-02 10:00"}),
+                                        "fecha_evaluacion"),
+            "hora irreal": (con("observaciones", {"fecha_verificacion": "2026-03-02 25:00"}, 1),
+                            "fecha_verificacion"),
+            "URL sin protocolo": (con("vacantes", {"url_oficial": "example.com/empleo/000123"}), "url_oficial"),
+            "valor fuera de la lista": (con("vacantes", {"region_relacionada": "Cerca"}), "region_relacionada"),
+            "empresa fuera de 06": (con("vacantes", {"empresa_id": "EMP-ZZ"}), "empresa_id", "06"),
+            "ID mal formado": (con("documentos", {"documento_id": "DOC-1"}), "documento_id"),
+            "ID repetido": (repetida, "habilidad_observacion_id", "HV-00001"),
+            "obligatoria vacía": (sin("vacantes", "titulo"), "titulo"),
+            "obligatoria vacía sin duplicado_de": (con("vacantes", {"ultima_observacion_id": ""}),
+                                                   "ultima_observacion_id"),
+            "referencia inexistente": (con("observaciones", {"busqueda_id": "BUS-0099"}), "busqueda_id", "BUS-0099"),
+            "observación de otra vacante": (con("evaluaciones", {"observacion_id": "OBS-0002"}), "observacion_id"),
+            "duplicada de sí misma": (con("vacantes", {"duplicado_de": "VAC-0001"}), "duplicado_de"),
+            "pareja repetida en informes": (informe_doble, "vacante_id"),
+            "patrón": (con("documentos", {"version_perfil": "1"}), "version_perfil"),
+            "columna desconocida": (con("vacantes", {"salario": "1000"}), "salario"),
+            "columna calculada": (con("informes", {"encaje": "★★★☆☆"}), "encaje"),
+            "valor que no es texto": (con("vacantes", {"job_id": 123}), "job_id"),
+            "pestaña desconocida": ({"postulaciones": [{"vacante_id": "VAC-0001"}]}, "postulaciones"),
+            "filas que no son lista": ({"vacantes": {"vacante_id": "VAC-0001"}}, "vacantes"),
+            "entrada que no es objeto": ([busqueda_ficticia()], "objeto"),
+        }
+        for caso, (entrada, *textos) in casos.items():
+            with self.subTest(caso):
+                self.assertRechazaSinEscribir("agregar", entrada, *textos)
+
+    def test_una_fila_que_repite_un_id_ya_registrado_se_rechaza(self):
+        self.ok("agregar", entrada=busqueda_ficticia())
+        self.assertRechazaSinEscribir("agregar", {"busquedas": busqueda_ficticia()["busquedas"]}, "busqueda_id",
+                                      "BUS-0001")
+
+    def test_las_referencias_se_resuelven_con_las_filas_ya_registradas(self):
+        busqueda = busqueda_ficticia()
+        self.ok("agregar", entrada={p: busqueda[p] for p in ("busquedas", "vacantes", "observaciones")})
+        self.ok("agregar", entrada={p: busqueda[p] for p in ("evaluaciones", "informes")})
+        self.assertEqual([f["evaluacion_id"] for f in self.leer("informes")], ["EVA-0001"])
+
+
+class Actualizar(CopiaFicticia):
+    def setUp(self):
+        super().setUp()
+        self.ok("crear")
+        self.ok("agregar", entrada=busqueda_ficticia())
+
+    def test_cambia_solo_las_columnas_dadas_de_la_fila_con_ese_id(self):
+        antes = self.leer("vacantes")
+        segunda = busqueda_ficticia()["busquedas"][0] | {"busqueda_id": "BUS-0002"}
+        observacion = busqueda_ficticia()["observaciones"][0] | {"observacion_id": "OBS-0003", "busqueda_id": "BUS-0002"}
+        self.ok("agregar", entrada={"busquedas": [segunda], "observaciones": [observacion]})
+        cambio = {"vacante_id": "VAC-0001", "titulo": "Puesto ficticio (nuevo título)", "ultima_observacion_id": "OBS-0003"}
+        self.assertEqual(self.ok("actualizar", entrada={"vacantes": [cambio]}), {"actualizadas": {"vacantes": 1}})
+        self.assertEqual(self.leer("vacantes"), [antes[0] | cambio, antes[1]])
+
+    def test_una_fila_absorbida_puede_quedar_sin_ultima_observacion(self):
+        cambio = {"vacante_id": "VAC-0002", "duplicado_de": "VAC-0001", "ultima_observacion_id": ""}
+        self.ok("actualizar", entrada={"vacantes": [cambio]})
+        self.assertEqual(self.leer("vacantes", "--id", "VAC-0002")[0]["duplicado_de"], "VAC-0001")
+
+    def test_rechaza_los_cambios_invalidos_y_no_escribe_ninguno(self):
+        casos = {
+            "ID inexistente": ({"vacantes": [{"vacante_id": "VAC-0099", "titulo": "x"}]}, "VAC-0099"),
+            "valor inválido": ({"vacantes": [{"vacante_id": "VAC-0001", "titulo": "x"},
+                                             {"vacante_id": "VAC-0002", "fecha_publicacion": "2026-02-30"}]},
+                               "VAC-0002", "fecha_publicacion"),
+            "sin el ID de la fila": ({"vacantes": [{"titulo": "x"}]}, "vacante_id"),
+            "pestaña sin ID propio": ({"informes": [{"busqueda_id": "BUS-0001", "evaluacion_id": "EVA-0001"}]},
+                                      "informes"),
+        }
+        for caso, (entrada, *textos) in casos.items():
+            with self.subTest(caso):
+                self.assertRechazaSinEscribir("actualizar", entrada, *textos)
+
+
+class Leer(CopiaFicticia):
+    def test_filtra_por_id_en_la_primera_columna_o_en_la_que_se_pida(self):
+        self.ok("crear")
+        self.ok("agregar", entrada=busqueda_ficticia())
+        self.assertEqual([f["vacante_id"] for f in self.leer("vacantes", "--id", "VAC-0002", "VAC-0099")], ["VAC-0002"])
+        self.assertEqual([f["observacion_id"] for f in self.leer("observaciones", "--columna", "vacante_id",
+                                                                 "--id", "VAC-0001")], ["OBS-0001"])
+
+    def test_sin_el_archivo_dice_que_lo_crea_configurar(self):
+        r = self.correr("leer", "vacantes")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("/configurar", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+
+class Exportar(CopiaFicticia):
+    def setUp(self):
+        super().setUp()
+        self.columnas = self.ok("crear")["pestanas"]
+
+    def test_da_cada_pestana_como_filas_en_el_orden_de_sus_columnas_con_su_rango_y_su_conteo(self):
+        busqueda = busqueda_ficticia()
+        self.ok("agregar", entrada=busqueda)
+        exportado = self.ok("exportar")
+        # En el orden del bloque, el mismo de las pestañas de la hoja.
+        self.assertEqual(list(exportado["conteos"]), PESTANAS)
+        self.assertEqual(list(exportado["pestanas"]), PESTANAS)
+        for pestana in PESTANAS:
+            with self.subTest(pestana=pestana):
+                filas = [[f[c] for c in self.columnas[pestana]] for f in self.leer(pestana)]
+                ultima = chr(ord("A") + len(self.columnas[pestana]) - 1)
+                self.assertEqual(exportado["conteos"][pestana], len(busqueda[pestana]))
+                self.assertEqual(exportado["pestanas"][pestana],
+                                 {"rango": f"{pestana}!A2:{ultima}{len(filas) + 1}", "filas": filas})
+        # informes lleva solo los IDs: las columnas calculadas son las fórmulas de la hoja.
+        self.assertEqual(exportado["pestanas"]["informes"]["rango"], "informes!A2:C2")
+
+    def test_un_valor_que_la_hoja_interpretaria_lleva_un_apostrofo_delante(self):
+        # 11/REG-HOJA, «Valores que la hoja interpretaría». Un «-» inicial o un «=» interior se quedan como están.
+        busqueda = busqueda_ficticia()
+        motivos = {"=1+1": "'=1+1", "+1 página": "'+1 página", "'Apply now' activo": "''Apply now' activo",
+                   "- sin fecha": "- sin fecha", "Botón = activo": "Botón = activo"}
+        busqueda["observaciones"] += [dict(busqueda["observaciones"][0], observacion_id=f"OBS-000{n}", motivo=m)
+                                      for n, m in enumerate(motivos, 3)]
+        self.ok("agregar", entrada=busqueda)
+        columna = self.columnas["observaciones"].index("motivo")
+        exportados = [f[columna] for f in self.ok("exportar")["pestanas"]["observaciones"]["filas"]]
+        # Después de las dos observaciones de busqueda_ficticia.
+        self.assertEqual(exportados[2:], list(motivos.values()))
+
+    def test_con_salida_va_a_un_archivo_con_cada_fila_en_su_propia_linea(self):
+        self.ok("agregar", entrada=busqueda_ficticia())
+        salida = self.dir / "exportacion.json"
+        r = self.correr("exportar", "--salida", str(salida))
+        self.assertEqual((r.returncode, r.stdout), (0, ""), r.stderr)
+        texto = salida.read_text(encoding="utf-8")
+        self.assertEqual(json.loads(texto), self.ok("exportar"))
+        lineas = [linea.strip().rstrip(",") for linea in texto.splitlines()]
+        for pestana, exportada in json.loads(texto)["pestanas"].items():
+            for fila in exportada["filas"]:
+                with self.subTest(pestana=pestana, fila=fila[0]):
+                    self.assertIn(json.dumps(fila, ensure_ascii=False), lineas)
+
+    def test_una_salida_que_no_se_puede_escribir_falla_con_un_mensaje_claro(self):
+        r = self.correr("exportar", "--salida", str(self.dir / "no_existe" / "exportacion.json"))
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("no_existe", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_un_archivo_sin_filas_da_conteos_en_cero_y_sin_rango(self):
+        exportado = self.ok("exportar")
+        self.assertEqual(exportado["conteos"], dict.fromkeys(PESTANAS, 0))
+        self.assertEqual(exportado["pestanas"], dict.fromkeys(PESTANAS, {"rango": None, "filas": []}))
+
+
+def hoy():
+    """La fecha de hoy en la zona horaria del 04 ficticio (UTC), la que usa el comando informe."""
+    return dt.datetime.now(dt.timezone.utc).date()
+
+
+def hace(dias):
+    return (hoy() - dt.timedelta(days=dias)).isoformat()
+
+
+class Informe(CopiaFicticia):
+    def setUp(self):
+        super().setUp()
+        self.ok("crear")
+
+    def test_las_filas_de_prueba_de_11_dan_los_valores_que_documenta_reg_validacion(self):
+        modulo = (RAIZ / "11_ESQUEMAS_DE_REGISTROS.md").read_text(encoding="utf-8")
+        bloque = re.search(r"^## REG-ESQUEMA.*?^```json\n(.*?)^```", modulo, re.M | re.S).group(1)
+        self.ok("agregar", entrada={p["nombre"]: [p["prueba"]] for p in json.loads(bloque)["pestanas"]})
+        dias = (hoy() - dt.date(2026, 1, 5)).days
+        self.assertEqual(self.ok("informe", "PRUEBA-BUS-0001"), [{
+            "busqueda_id": "PRUEBA-BUS-0001", "vacante_id": "PRUEBA-VAC-0001", "evaluacion_id": "PRUEBA-EVA-0001",
+            "empresa": "PRUEBA", "vacante": "000123 — Puesto de prueba", "encaje": "★★★☆☆ · 3/4, 1 solo académico",
+            "antiguedad": f"{dias} d · antigua",
+            "alertas": "Insuficiente: Núcleo B · Académica: Núcleo C · Pendiente: remoto",
+            "url_oficial": "https://example.com/empleo/000123"}])
+
+    def test_la_tabla_de_una_busqueda_sigue_las_formulas_de_informes(self):
+        def vacante(n, job_id, publicada, detectada, url=""):
+            return {"vacante_id": f"VAC-000{n}", "empresa_id": "EMP-XA", "job_id": job_id, "titulo": f"Puesto {n}",
+                    "url_oficial": url, "region_relacionada": "Dentro", "fecha_publicacion": publicada,
+                    "primera_deteccion": detectada, "ultima_observacion_id": f"OBS-000{n}"}
+
+        def observacion(n):
+            return {"observacion_id": f"OBS-000{n}", "vacante_id": f"VAC-000{n}", "busqueda_id": "BUS-0002",
+                    "fecha_verificacion": hace(0), "estado_vigencia": "Confirmada abierta", "motivo": "En listado",
+                    "tipo_fuente": "Oficial"}
+
+        def evaluacion(n, condiciones, detalle, encaje="", cobertura="", nucleos=""):
+            return {"evaluacion_id": f"EVA-000{n}", "vacante_id": f"VAC-000{n}", "observacion_id": f"OBS-000{n}",
+                    "fecha_evaluacion": hace(0), "version_perfil": "1.0", "version_evaluacion": "1.0",
+                    "condiciones": condiciones, "condiciones_detalle": detalle, "encaje": encaje,
+                    "cobertura": cobertura, "nucleos": nucleos}
+
+        busqueda = busqueda_ficticia()
+        busqueda["busquedas"].append(dict(busqueda["busquedas"][0], busqueda_id="BUS-0002", fecha_hora=hace(0)))
+        busqueda["vacantes"] += [
+            vacante(3, "R-3", hace(25), hace(3), "https://example.com/empleo/R-3"),
+            # La fórmula compara sin distinguir mayúsculas: también es «sin Job ID».
+            vacante(4, "no publicado", "", hace(3)),
+            vacante(5, "", "", hace(0)),
+            vacante(6, "R-6", hace(20), hace(0)),
+            vacante(7, "R-7", hace(19), hace(25)),
+            vacante(8, "R-8", hace(0), hace(0))]
+        busqueda["observaciones"] += [observacion(n) for n in range(3, 9)]
+        busqueda["evaluaciones"] += [
+            evaluacion(3, "Sin exclusiones", "Sueldo | Duración | Relación | Horario", "★★★★☆", "4/4",
+                       "Núcleo A: Directa | Núcleo B: Transferible"),
+            evaluacion(4, "Excluida", "Duración: «6-month contract» | Relación: «Freelance»"),
+            evaluacion(5, "Sin exclusiones", "Ninguno", "★★☆☆☆", "", "Núcleo A: Insuficiente | Núcleo B: Insuficiente"),
+            evaluacion(6, "Sin exclusiones", "Sueldo | Modalidad | Viajes", "★★★☆☆", "2/3, 1 solo académico",
+                       "Núcleo C: Académica/formativa"),
+            evaluacion(7, "Sin exclusiones", "Ubicación", "★☆☆☆☆", "1/4", "Núcleo A: Insuficiente"),
+            evaluacion(8, "Sin exclusiones", "Ninguno", "☆☆☆☆☆", "0/2")]
+        busqueda["informes"] += [{"busqueda_id": "BUS-0002", "vacante_id": f"VAC-000{n}", "evaluacion_id": f"EVA-000{n}"}
+                                 for n in (3, 4, 5, 6, 7, 8)]
+        self.ok("agregar", entrada=busqueda)
+        tabla = self.ok("informe", "BUS-0002")
+        self.assertEqual([[f[c] for c in ("empresa", "vacante", "encaje", "antiguedad", "alertas", "url_oficial")]
+                          for f in tabla], [
+            ["XA", "R-3 — Puesto 3", "★★★★☆ · 4/4", "25 d · antigua", "—", "https://example.com/empleo/R-3"],
+            ["XA", "sin Job ID — Puesto 4", "—", "≥ 3 d", "Excluida: Duración: «6-month contract»; Relación: «Freelance»",
+             ""],
+            ["XA", "sin Job ID — Puesto 5", "★★☆☆☆", "—", "Insuficiente: Núcleo A; Núcleo B", ""],
+            ["XA", "R-6 — Puesto 6", "★★★☆☆ · 2/3, 1 solo académico", "20 d · antigua",
+             "Académica: Núcleo C · Pendiente: modalidad, viajes", ""],
+            # Detectada antes de su fecha de publicación: cuenta desde la más antigua de las dos.
+            ["XA", "R-7 — Puesto 7", "★☆☆☆☆ · 1/4", "25 d · antigua", "Insuficiente: Núcleo A · Pendiente: ubicación",
+             ""],
+            ["XA", "R-8 — Puesto 8", "☆☆☆☆☆ · 0/2", "0 d", "—", ""]])
+        self.assertEqual([(f["busqueda_id"], f["vacante_id"], f["evaluacion_id"]) for f in tabla],
+                         [("BUS-0002", f"VAC-000{n}", f"EVA-000{n}") for n in (3, 4, 5, 6, 7, 8)])
+        self.assertEqual(len(self.ok("informe", "BUS-0001")), 1)
+
+    def test_una_busqueda_inexistente_falla_con_un_mensaje_claro(self):
+        r = self.correr("informe", "BUS-0099")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("BUS-0099", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_sin_una_zona_horaria_usable_en_04_dice_que_falta(self):
+        self.ok("agregar", entrada={"busquedas": busqueda_ficticia()["busquedas"]})
+        for zona, textos in ((None, ("zona_horaria", "/configurar", "paso 4")),
+                             ("Region/Inexistente", ("Region/Inexistente", "tzdata"))):
+            with self.subTest(zona=zona):
+                (self.dir / "04_PREFERENCIAS_LABORALES.md").write_text(modulo_04(zona), encoding="utf-8")
+                r = self.correr("informe", "BUS-0001")
+                self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+                for t in textos:
+                    self.assertIn(t, r.stderr)
+                self.assertNotIn("Traceback", r.stderr)
+
+    def test_el_umbral_de_antigua_sale_de_la_formula_del_bloque(self):
+        modulo = self.dir / "11_ESQUEMAS_DE_REGISTROS.md"
+        texto = modulo.read_text(encoding="utf-8")
+        self.assertEqual(texto.count("n>=20,"), 1)
+        modulo.write_text(texto.replace("n>=20,", "n>=30,"), encoding="utf-8")
+        busqueda = busqueda_ficticia()
+        busqueda["vacantes"][0].update(fecha_publicacion=hace(25), primera_deteccion=hace(0))
+        self.ok("agregar", entrada=busqueda)
+        self.assertEqual(self.ok("informe", "BUS-0001")[0]["antiguedad"], "25 d")
+
+
+if __name__ == "__main__":
+    unittest.main()

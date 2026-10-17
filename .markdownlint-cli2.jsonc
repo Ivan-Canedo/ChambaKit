@@ -1,0 +1,16 @@
+// Reglas de Markdown del proyecto; las leen la extensión de VS Code y `npx markdownlint-cli2`.
+{
+  "config": {
+    "default": true,
+    // Los párrafos van en una sola línea; partirlos no cambia cómo se ven.
+    "MD013": false,
+    // Las fichas de 06 repiten «Identidad», «Portal», etc. bajo encabezados distintos.
+    "MD024": { "siblings_only": true },
+    // Los encabezados de 02 y 06 llevan nombres de empresas, que pueden terminar en punto («S.A.»).
+    "MD026": { "punctuation": ",;:!。，；：！" }
+  },
+  "globs": ["**/*.md"],
+  // Salidas generadas para una vacante, con el formato que exige herramientas/generar_cv.py, y el
+  // entorno virtual del modo local, con los .md de sus bibliotecas.
+  "ignores": ["muestras_cv/**", ".venv/**"]
+}

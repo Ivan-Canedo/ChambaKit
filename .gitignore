@@ -1,0 +1,13 @@
+# Tickets, specs y notas privadas del gestor de tickets local.
+.scratch/
+
+# Cachés de Python.
+__pycache__/
+*.py[cod]
+
+# Entornos virtuales.
+.venv/
+venv/
+
+# Permisos locales de Claude Code: pueden llevar rutas de la máquina.
+.claude/settings.local.json
