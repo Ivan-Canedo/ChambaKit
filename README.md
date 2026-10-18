@@ -40,6 +40,26 @@ La hoja de registros se crea y se usa con los conectores «Google Drive» y «Go
 
 Si te faltan, `/configurar` te guía para conectarlos. Si no los conectas, tu copia trabaja en modo local.
 
+## Sin suscripción de Claude
+
+**Experimental.** Tu copia también funciona con Antigravity, el agente de Google, y Gemini en su plan gratuito, siempre en modo local: tus registros van al archivo de tu copia. Puedes configurarla, buscar vacantes, evaluarlas, generar tu CV y actualizar tu copia, como con Claude Code. Gemini puede seguir peor que Claude las reglas largas de tu copia, como no inventar datos, así que revisa lo que escribe.
+
+Sin Claude no funcionan el canal Web, que es un proyecto de claude.ai, ni la hoja de Google, que se usa con los conectores de claude.ai.
+
+Necesitas:
+
+- **Antigravity** instalado.
+- **Una sesión** iniciada en Antigravity con una cuenta de Google.
+- **La carpeta de tu copia** abierta en Antigravity.
+
+Para empezar, escribe `/configurar` o, si tu Antigravity no admite comandos con barra, «configura mi copia». Para actualizar, `/actualizar` o «actualiza mi copia».
+
+En Linux y macOS, con el preset de permisos «Default», Antigravity corre los comandos sin internet. La primera vez que un comando lo necesite, como al revisar o instalar herramientas o al buscar vacantes, el agente te va a pedir que cambies el preset a «Request Review», en el que apruebas cada comando antes de que corra, y no «Turbo», que los corre sin preguntarte.
+
+La línea «Sistemas» de arriba vale también aquí: solo Linux está probado.
+
+Otros agentes que lean `AGENTS.md` y las skills de `.agents/skills/` podrían funcionar igual, pero no están probados.
+
 ## Crea tu copia privada
 
 Tu copia va a guardar tus datos personales: contacto, trayectoria, sueldo deseado, empresas y búsquedas. En un repositorio público, cualquiera podría leerlos. Por eso tu copia debe ser un repositorio privado o una carpeta sin remoto.
