@@ -14,7 +14,9 @@ Lleva a la copia del titular los cambios de una versión más nueva de la planti
 
 `git merge-file` hace la fusión; tú resuelves solo los conflictos. Lo que la fusión no ve (columnas nuevas en los registros, datos que hay que preguntarle al titular) lo describe `CAMBIOS.md`, y lo haces en el paso 5.
 
-En los comandos, `<base>` y `<nueva>` son las etiquetas (`v1.0`, `v1.1`), `<url>` es la de 01 y `<directorio temporal>` es una carpeta nueva en el directorio temporal de la sesión, no en la copia.
+En los comandos, `<base>` y `<nueva>` son las etiquetas (`v1.0`, `v1.1`), `<url>` es la de 01 y `<directorio temporal>` es una carpeta nueva en el directorio temporal de la sesión o, si no tienes uno, en el del sistema; nunca en la copia.
+
+La actualización necesita red para traer la plantilla. Si `git ls-remote` o `git fetch` fallan porque no se resuelve el nombre o se niega la conexión, no es la URL ni la copia: sigue «Comandos sin red» de `/configurar` (`.claude/skills/configurar/SKILL.md`) y, cuando el agente tenga red, repite el comando.
 
 ## Paso 1: Condiciones
 

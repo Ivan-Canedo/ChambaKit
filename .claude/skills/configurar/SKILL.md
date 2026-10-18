@@ -9,10 +9,12 @@ Lleva al titular de una copia recién creada a una copia lista para usar, un pas
 
 Si `git config --local --get chambakit.mantenedor` da `true`, esta carpeta es la plantilla: detente y dile al mantenedor que pruebe en un clon temporal (`CONTRIBUTING.md`).
 
+La hoja de Google y el proyecto web necesitan Claude Code; con otro agente, la copia usa el modo local (ADR 0005). Decide cada vez que haga falta si eres Claude Code y no anotes qué agente usa el titular: puede cambiarlo. En los comandos, `<directorio temporal>` es el directorio temporal de la sesión o, si no tienes uno, el del sistema; nunca esta carpeta.
+
 ## Cómo avanzar
 
 1. Corre los pasos 1 y 2 en cada invocación: son revisiones rápidas, y el remoto o el equipo pueden haber cambiado desde la última sesión.
-2. Sigue con el primer paso, en el orden de esta skill, que nombre una fila «Sin llenar» de ESTADO. Si no queda ninguna, la configuración está completa: si 00 («Registros») tiene la URL de la hoja, ofrece el paso 9; si dice `modo local`, ofrece pasar los registros a una hoja de Google (paso 8, «De modo local a la hoja»), por si ya conectó Google o quiere hacerlo.
+2. Sigue con el primer paso, en el orden de esta skill, que nombre una fila «Sin llenar» de ESTADO. Si no queda ninguna, la configuración está completa. Solo si eres Claude Code, ofrece lo que sigue: si 00 («Registros») tiene la URL de la hoja, el paso 9; si dice `modo local`, pasar los registros a una hoja de Google (paso 8, «De modo local a la hoja»), por si ya conectó Google o quiere hacerlo.
 3. Haz un paso por vez. Al terminarlo, marca «Configurado», con su siguiente paso de uso, cada fila de ESTADO que lo nombra: la de cada módulo que el paso escribió y también la de cada módulo de método que solo deja listo, sin editarlo. Cada módulo escrito pasa markdownlint sin advertencias y se versiona según AGENTS.md («Al cerrar»). El paso termina cuando ninguna fila que lo nombra sigue «Sin llenar».
 4. Al terminar un paso, di cuál sigue y pregunta si continuar ahora o en otra sesión.
 
@@ -23,9 +25,9 @@ Los módulos van a guardar datos personales del titular, así que su copia debe 
 1. Lista los remotos con `git remote -v`. Si la carpeta no es un repositorio de git o no tiene remotos, dilo en una línea y pasa al paso 2.
 2. Si un remoto apunta a la plantilla pública (`github.com/Ivan-Canedo/ChambaKit`, por HTTPS o SSH), el titular clonó la plantilla en lugar de crear su copia. Ofrécele dos caminos, en este orden:
    - **Solo en su equipo:** con su permiso, quita ese remoto (`git remote remove <nombre>`). Dile en una línea que su copia queda solo en su equipo y que en el paso 8 le propones cómo respaldarla. Sigue con el punto 3.
-   - **Copia en GitHub:** en la página de la plantilla, «Use this template» → «Create a new repository» con visibilidad **Private**; después clona ese repositorio y ábrelo en VS Code. Detén la configuración hasta que trabaje en esa copia: al correr `/configurar` en ella, este paso revisa su visibilidad.
+   - **Copia en GitHub:** en la página de la plantilla, «Use this template» → «Create a new repository» con visibilidad **Private**; después clona ese repositorio y ábrelo con su agente. Detén la configuración hasta que trabaje en esa copia: al configurarla, este paso revisa su visibilidad.
 3. Revisa la visibilidad de cada remoto restante:
-   - **GitHub:** `gh repo view <dueño>/<repo> --json visibility --jq .visibility`, si `gh` está instalado y con sesión. Si no, `curl -s -o /dev/null -w '%{http_code}' https://api.github.com/repos/<dueño>/<repo>`: `200` es público; `404`, privado.
+   - **GitHub:** `gh repo view <dueño>/<repo> --json visibility --jq .visibility`, si `gh` está instalado y con sesión. Si no, `curl -s -o /dev/null -w '%{http_code}' https://api.github.com/repos/<dueño>/<repo>`: `200` es público; `404`, privado; `000`, que el comando no llegó a la red («Comandos sin red»).
    - **Otro servicio:** pídele al titular que confirme la visibilidad en la configuración del repositorio.
 4. Si alguno es público, avísale que todo lo que llene quedará publicado en cuanto haga push, y recomiéndale volverlo privado antes de seguir (en GitHub: «Settings» → «General» → «Danger Zone» → «Change visibility»).
 
@@ -52,6 +54,7 @@ Python, Node y markdownlint-cli2 sirven a todos los pasos siguientes. Las herram
 - **Node viejo:** si el gestor instala un Node más viejo que el que pide markdownlint-cli2 (pasa con `apt` en versiones anteriores de Debian y Ubuntu), ofrece la versión LTS con las instrucciones de <https://nodejs.org> para su distribución.
 - **`PATH`:** si `markdownlint-cli2` no aparece después de instalarlo con `--prefix ~/.local`, falta `~/.local/bin` en el `PATH`; explícale al titular cómo agregarlo en su shell. En Windows, después de `winget` hay que reiniciar VS Code para que la terminal vea el `PATH` nuevo.
 - **Python en Windows:** donde la documentación diga `python3`, usa `py -3`.
+- **Sin red:** si una instalación falla porque no se resuelve un nombre o se niega la conexión, sigue «Comandos sin red».
 
 ## Paso 3: Perfil maestro
 
@@ -124,7 +127,7 @@ Redacta el CV base de `03_CV_BASE.md` en español e inglés desde 02, con las re
    | poppler | `pdftotext -v` | `sudo dnf install poppler-utils` / `sudo apt install poppler-utils` | `brew install poppler` | `winget install -e --id oschwartz10612.Poppler` |
    | Fuente Carlito | En Linux, `fc-match Carlito` responde con Carlito; en todos, `pdffonts` del punto 2 | `sudo dnf install google-carlito-fonts` / `sudo apt install fonts-crosextra-carlito` | `brew install --cask font-carlito` | Viene con LibreOffice |
 
-2. **Prueba con el esqueleto:** antes de redactar, genera el esqueleto de 03 en el directorio temporal de la sesión, no en la copia:
+2. **Prueba con el esqueleto:** antes de redactar, genera el esqueleto de 03 en `<directorio temporal>`, no en la copia:
 
    ```sh
    python3 -I herramientas/generar_cv.py 03_CV_BASE.md --idioma es --salida <directorio temporal>/esqueleto
@@ -156,19 +159,21 @@ Llena `06_EMPRESAS_OBJETIVO.md` con las empresas donde el titular quiere buscar,
    2. **Plataforma con adaptador** (las que lista `python3 -I herramientas/buscar.py --help`): escribe la configuración con la forma de CAT-PLATAFORMAS, con `consulta` en `null`.
    3. **Plataforma sin adaptador o sitio propio:** sigue CAT-REGLAS («Plataforma»): lee el `robots.txt` antes de pedirle nada al portal. El adaptador nuevo va en `herramientas/buscar.py` con la interfaz de los que ya tiene (el comentario sobre `ADAPTADORES`). Si ninguna ruta está permitida, díselo al titular.
    4. **Ficha:** asígnale un ID y escribe su fila de CAT-EMPRESAS y su ficha según CAT-REGLAS y FICHA-PLANTILLA, con el bloque de «### Configuración». Lo que no hayas comprobado queda pendiente.
-   5. **Búsqueda de prueba:** corre el script solo con esa empresa y guarda la salida en el directorio temporal de la sesión:
+   5. **Búsqueda de prueba:** corre el script solo con esa empresa y guarda la salida en `<directorio temporal>`:
 
       ```sh
       python3 -I herramientas/buscar.py EMP-<ID> --salida <directorio temporal>/prueba.json
       ```
 
-      Debe salir `[OK]`, o `[SIN TOTAL]` con la comprobación de su ficha. Con `[FALLO]`, corrige la configuración o el adaptador y repítela. Revisa las líneas «revisar ubicación»: si una nombra de otra forma un lugar que el titular ya aceptó, como una abreviatura o su nombre en inglés, propónle agregar esa forma al bloque de 04 (paso 4, «Cómo se escriben»); si es otro lugar, no lo propongas. Si el listado trae miles de vacantes, ofrécele una `consulta` más estrecha. Completa la ficha con lo que comprobaste (ubicaciones, remotas, cobertura) y anota el resultado en su primera línea. La búsqueda de prueba no se registra.
+      Debe salir `[OK]`, o `[SIN TOTAL]` con la comprobación de su ficha. Si el `[FALLO]` dice que no se resolvió el nombre o que se negó la conexión, sigue «Comandos sin red» antes de tocar la ficha. Con otro `[FALLO]`, corrige la configuración o el adaptador y repítela. Revisa las líneas «revisar ubicación»: si una nombra de otra forma un lugar que el titular ya aceptó, como una abreviatura o su nombre en inglés, propónle agregar esa forma al bloque de 04 (paso 4, «Cómo se escriben»); si es otro lugar, no lo propongas. Si el listado trae miles de vacantes, ofrécele una `consulta` más estrecha. Completa la ficha con lo que comprobaste (ubicaciones, remotas, cobertura) y anota el resultado en su primera línea. La búsqueda de prueba no se registra.
 4. **Revisión:** muéstrale el catálogo, con la plataforma y el canal de cada empresa, y lo que quedó pendiente.
 5. **Cierre:** llena la línea **Estado** de 06 y súbelo de versión. Las filas de 06 y 07 en ESTADO quedan «Configurado», con los siguientes pasos «Agregar o retirar empresas según CAT-REGLAS» para 06 y «Buscar vacantes (BUS-PASOS)» para 07. Si no dio ninguna empresa, el catálogo queda vacío y las dos filas quedan «Configurado» con esos mismos siguientes pasos; dile que el script no tiene dónde buscar hasta que agregue una, con este paso o cuando quiera.
 
 ## Paso 8: Registros
 
-Crea los registros del titular desde el esquema de `11_ESQUEMAS_DE_REGISTROS.md` (11/REG-HOJA): la hoja de Google `ChambaKit_Registros`, con los conectores de Google, o, si el titular no los conecta, el archivo del modo local. Si una copia en modo local conecta Google después, «De modo local a la hoja» pasa sus registros a una hoja.
+Crea los registros del titular desde el esquema de `11_ESQUEMAS_DE_REGISTROS.md` (11/REG-HOJA): la hoja de Google `ChambaKit_Registros`, con los conectores de Google de claude.ai, o, si el titular no los conecta, el archivo del modo local. Si una copia en modo local conecta Google después, «De modo local a la hoja» pasa sus registros a una hoja.
+
+Si no eres Claude Code, salta los puntos 1 y 2 y sigue directo en «Modo local»: los conectores de claude.ai solo cargan en Claude Code.
 
 1. **Conectores:** revisa si esta sesión tiene las herramientas de «claude.ai Google Drive» y «claude.ai Google Sheets», cuyos nombres llevan `Google_Drive` y `Google_Sheets`. Si tus herramientas se cargan bajo demanda, búscalas antes de concluir que faltan. Hacen falta las dos. Si están, pregúntale dónde quiere sus registros: en una hoja de su Google Drive o en un archivo de su copia (modo local). Con la hoja, sigue en «Hoja de Google»; si no, en «Modo local».
 2. **Guía para conectarlos:** si falta alguna, antes de ofrecer otra opción, dale al titular estos pasos y espera su respuesta:
@@ -182,7 +187,7 @@ Crea los registros del titular desde el esquema de `11_ESQUEMAS_DE_REGISTROS.md`
 
 ### Hoja de Google
 
-Drive crea el archivo y Sheets lo arma. La hoja queda en el Drive del titular, privada.
+Drive crea el archivo y Sheets lo arma. La hoja queda en el Drive del titular, privada. Necesita Claude Code, por los conectores de claude.ai.
 
 1. **Crear la hoja:** sigue 11/REG-VALIDACION («Creación») con el bloque de 11/REG-ESQUEMA, la `zona_horaria` del bloque de 04/PREF-UBICACION y, para la lista de `empresa_id`, los IDs de 06/CAT-EMPRESAS.
 2. **Comprobar:** sigue REG-VALIDACION («Comprobación»), que termina borrando las filas `PRUEBA-`. Si algo no cuadra, corrígelo en la hoja y repite la comprobación; no sigas con una hoja que no la pasa.
@@ -194,7 +199,7 @@ Drive crea el archivo y Sheets lo arma. La hoja queda en el Drive del titular, p
 
 Los registros van al archivo `ChambaKit_Registros.xlsx` de la copia, que escribe y lee `herramientas/registros.py` (11/REG-LOCAL).
 
-1. **Aviso:** antes de instalar o crear nada, dile al titular que en modo local el canal Web no funciona: un proyecto de claude.ai no puede leer ni escribir ese archivo, así que búsquedas, evaluaciones y registros se hacen solo desde Claude Code, en esta carpeta. El respaldo y el historial del archivo son los commits de su copia; sin un remoto privado, solo viven en su equipo: si lo pierde, pierde su copia y sus registros, y le ofreces guiarlo a un respaldo. Pídele que confirme; si no confirma, detén la configuración en este paso.
+1. **Aviso:** antes de instalar o crear nada, dile al titular que en modo local el canal Web no funciona: un proyecto de claude.ai no puede leer ni escribir ese archivo, así que búsquedas, evaluaciones y registros se hacen solo desde el canal Code: un agente con terminal en esta carpeta. El respaldo y el historial del archivo son los commits de su copia; sin un remoto privado, solo viven en su equipo: si lo pierde, pierde su copia y sus registros, y le ofreces guiarlo a un respaldo. Pídele que confirme; si no confirma, detén la configuración en este paso.
 2. **Entorno virtual:** la herramienta usa `openpyxl`, que va en un entorno virtual dentro de la copia (`.venv/`, que git ignora), no en el Python del sistema. Muéstrale los comandos de su sistema (paso 2) y pide su permiso antes de correrlos:
 
    | Sistema | Crear el entorno | Instalar `openpyxl` | Comprobación |
@@ -205,11 +210,11 @@ Los registros van al archivo `ChambaKit_Registros.xlsx` de la copia, que escribe
    En Debian y Ubuntu, si crear el entorno falla por `ensurepip`, falta el paquete del sistema: `sudo apt install python3-venv`, que corre el titular (paso 2, «Instalación»). El punto termina cuando la comprobación da una versión.
 3. **Crear el archivo:** `.venv/bin/python -I herramientas/registros.py crear` (en Windows, con `.venv\Scripts\python.exe`). Su salida lista las siete pestañas de 11/REG-ESQUEMA; si dice que el archivo ya existe, no lo toques y pregúntale al titular de dónde salió.
 4. **00:** reemplaza el marcador «pendiente…» que sigue a **Registros:** por `modo local`.
-5. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Registrar desde Code con `herramientas/registros.py` (11/REG-LOCAL)» para 00, «Analizar tendencias cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»)» para 11. Ofrécele el commit de 11/REG-LOCAL («Historial y respaldo»), con el archivo nuevo y los módulos editados. Dile que, si después conecta Google, `/configurar` pasa sus registros a una hoja («De modo local a la hoja»). La configuración termina aquí: el paso 9 es solo para la hoja.
+5. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Registrar desde Code con `herramientas/registros.py` (11/REG-LOCAL)» para 00, «Analizar tendencias cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»)» para 11. Ofrécele el commit de 11/REG-LOCAL («Historial y respaldo»), con el archivo nuevo y los módulos editados. Si eres Claude Code, dile que, si después conecta Google, `/configurar` pasa sus registros a una hoja («De modo local a la hoja»). La configuración termina aquí: el paso 9 es solo para la hoja.
 
 ### De modo local a la hoja
 
-Pasa los registros de una copia en modo local a una hoja de Google nueva, cuando el titular ya conectó Google o quiere hacerlo. Solo va en este sentido: de la hoja no se vuelve al modo local (11/REG-HOJA).
+Pasa los registros de una copia en modo local a una hoja de Google nueva, cuando el titular ya conectó Google o quiere hacerlo. Necesita Claude Code, por los conectores de claude.ai: con otro agente, dile al titular que abra su copia en Claude Code para este paso. Solo va en este sentido: de la hoja no se vuelve al modo local (11/REG-HOJA).
 
 1. **Antes de empezar:**
    - **Modo local:** 00 («Registros») debe decir `modo local` y el archivo `ChambaKit_Registros.xlsx` debe existir. Si no existe, detente y pregúntale al titular dónde está; no crees otro.
@@ -217,7 +222,7 @@ Pasa los registros de una copia en modo local a una hoja de Google nueva, cuando
    - **Aviso:** explícale lo que va a pasar. Sus registros se copian a una hoja nueva de su Drive y se cuentan las filas de cada pestaña en los dos lugares. Solo si todos los conteos coinciden, la copia pasa a la hoja y el archivo sale de la copia, con su última versión guardada en git. Pídele que confirme.
    - Mientras dure el paso, no se registra nada nuevo.
 2. **Crear la hoja:** sigue los puntos 1 y 2 de «Hoja de Google», que la crean y la comprueban con las filas `PRUEBA-`.
-3. **Exportar:** con el Python del entorno virtual (en Windows, `.venv\Scripts\python.exe`), guarda en el directorio temporal de la sesión todas las filas del archivo:
+3. **Exportar:** con el Python del entorno virtual (en Windows, `.venv\Scripts\python.exe`), guarda en `<directorio temporal>` todas las filas del archivo:
 
    ```sh
    .venv/bin/python -I herramientas/registros.py exportar --salida <directorio temporal>/exportacion.json
@@ -239,7 +244,7 @@ Pasa los registros de una copia en modo local a una hoja de Google nueva, cuando
 
 ## Paso 9: Proyecto web (opcional)
 
-Le da al titular la lista de lo que hace en claude.ai para usar ChambaKit desde cualquier dispositivo, con el canal Web (07/BUS-CANALES). Solo se ofrece si 00 («Registros») tiene la URL de la hoja: en modo local, o mientras 00 tenga el marcador «pendiente…», un proyecto web no tendría registros que leer ni escribir. Ninguna de tus herramientas llega a los proyectos de claude.ai: el titular hace cada paso y tú lo acompañas. Este paso no edita módulos ni ESTADO.
+Le da al titular la lista de lo que hace en claude.ai para usar ChambaKit desde cualquier dispositivo, con el canal Web (07/BUS-CANALES). Solo se ofrece si eres Claude Code, porque la hoja que lee el proyecto vive de sus conectores, y si 00 («Registros») tiene la URL de la hoja: en modo local, o mientras 00 tenga el marcador «pendiente…», un proyecto web no tendría registros que leer ni escribir. Ninguna de tus herramientas llega a los proyectos de claude.ai: el titular hace cada paso y tú lo acompañas. Este paso no edita módulos ni ESTADO.
 
 1. **Oferta:** pregúntale si ya creó el proyecto. Si ya lo tiene, salta al punto 4. Si no, dile en pocas líneas qué gana y qué no:
    - **Gana:** desde el navegador o el teléfono, ver la tabla de una búsqueda, pedir el detalle de una vacante, evaluarla, adaptar el texto de su CV y continuar búsquedas en las empresas con canal «Web y Code».
@@ -263,3 +268,21 @@ Le da al titular la lista de lo que hace en claude.ai para usar ChambaKit desde 
    - La hoja no se reemplaza: el proyecto lee la misma de Drive.
 
 La configuración está completa cuando la prueba trae la tabla de 01 y los encabezados de `vacantes`, o cuando el titular ya tenía el proyecto.
+
+## Comandos sin red
+
+Algunos agentes corren los comandos en un entorno aislado sin internet, como Antigravity en su preset «Default» en Linux y macOS. Entonces fallan todos los que salen a la red (`buscar.py`, `git ls-remote` y `git fetch` de `/actualizar`, `pip`, `npm`, `curl`), aunque el script esté bien.
+
+1. **Cómo se reconoce:** el error no viene de ningún servidor. O no se resuelve el nombre (`Temporary failure in name resolution`, `Name or service not known`, `nodename nor servname`, `getaddrinfo`, `Could not resolve host`), o se niega la conexión (`Connection refused`, `Network is unreachable`, `Operation not permitted`, `Failed to connect`); `curl` da el código `000`.
+2. **No es falta de red:** un `[FALLO]` de `buscar.py` con un código HTTP (`HTTP 403`, `HTTP 404`…), un `robots.txt` que prohíbe una ruta o un error de la configuración de la ficha: ahí el portal respondió, o el problema es de la ficha, y se corrige como dice el paso 7. Tampoco lo es si en la misma búsqueda otra empresa dio `[OK]` o `[SIN TOTAL]`.
+3. **Confirmación:** si no está claro, prueba la red con un sitio que siempre responde (en Windows, con `py -3`):
+
+   ```sh
+   python3 -I -c "import urllib.request; urllib.request.urlopen('https://github.com', timeout=20); print('con red')"
+   ```
+
+   Si imprime `con red`, el comando sí tiene red y el fallo es de otra cosa.
+4. **Qué decirle al titular:** en palabras simples, que su agente corre los comandos sin acceso a internet, así que no llegan a los portales ni a la plantilla; que no es un error de su copia, y que hay que darle red a su agente:
+   - **Antigravity:** en su configuración, que cambie el preset de permisos a «Request Review». Con él los comandos tienen red y el agente le pide aprobar cada uno antes de correrlo. Que no use «Turbo»: corre los comandos sin preguntarle, así que ninguno pasa por su revisión.
+   - **Otro agente:** que busque en su configuración cómo dejar que los comandos usen la red, de preferencia con la opción que pide aprobar cada comando antes que con la que los corre todos sin preguntar.
+5. **Después:** cuando diga que ya cambió el ajuste, repite la confirmación del punto 3 y luego el comando que falló. Si no quiere darle red, dile que las búsquedas, las instalaciones y `/actualizar` no van a funcionar hasta que la tenga, y detén el paso donde estás.
