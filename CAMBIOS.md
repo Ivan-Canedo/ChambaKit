@@ -9,6 +9,7 @@ Qué trae cada versión de la plantilla y qué hace `/actualizar` en la copia al
 - Tu copia también funciona sin suscripción de Claude, con otro agente con terminal en modo local, como Antigravity con Gemini gratis. Es experimental; ver «Sin suscripción de Claude» en el README.
 - Los módulos y las skills hablan de «el agente» en lugar de «Claude», salvo en lo que solo funciona con Claude: el canal Web, la hoja de Google y el proyecto de claude.ai.
 - Si tu agente corre los comandos sin internet, `/configurar` y `/actualizar` te lo explican y te dicen cómo darle red.
+- `/configurar` ya no te pide instalar markdownlint-cli2 cuando ya lo tienes, y al terminar te lleva a tu primera búsqueda, en una conversación nueva.
 
 ### En la copia
 

@@ -17,6 +17,10 @@ La hoja de Google y el proyecto web necesitan Claude Code; con otro agente, la c
 2. Sigue con el primer paso, en el orden de esta skill, que nombre una fila «Sin llenar» de ESTADO. Si no queda ninguna, la configuración está completa. Solo si eres Claude Code, ofrece lo que sigue: si 00 («Registros») tiene la URL de la hoja, el paso 9; si dice `modo local`, pasar los registros a una hoja de Google (paso 8, «De modo local a la hoja»), por si ya conectó Google o quiere hacerlo.
 3. Haz un paso por vez. Al terminarlo, marca «Configurado», con su siguiente paso de uso, cada fila de ESTADO que lo nombra: la de cada módulo que el paso escribió y también la de cada módulo de método que solo deja listo, sin editarlo. Cada módulo escrito pasa markdownlint sin advertencias y se versiona según AGENTS.md («Al cerrar»). El paso termina cuando ninguna fila que lo nombra sigue «Sin llenar».
 4. Al terminar un paso, di cuál sigue y pregunta si continuar ahora o en otra sesión.
+5. **Fin de la configuración:** cuando ya no queda ninguna fila «Sin llenar» y el titular terminó o declinó lo que se ofrece en el punto 2, cierra en este orden:
+   1. Un resumen corto: una línea por paso configurado.
+   2. Si esta sesión escribió el archivo del modo local, ofrece en una línea el commit de 11/REG-LOCAL («Historial y respaldo»), sin que sea la pregunta final.
+   3. Como último mensaje, el siguiente paso: la primera búsqueda (07/BUS-PASOS). Recomiéndale abrir una conversación nueva en esta carpeta (en Claude Code, `/clear`) y pedir «busca vacantes en mis empresas»: la de la configuración ya trae mucho contexto que la búsqueda no necesita. Si 06 no tiene empresas, el siguiente paso es agregar una con el paso 7.
 
 ## Paso 1: Copia privada
 
@@ -47,11 +51,12 @@ Python, Node y markdownlint-cli2 sirven a todos los pasos siguientes. Las herram
 | --- | --- | --- | --- | --- |
 | Python 3.9 o mayor | `python3 --version` | `sudo dnf install python3` / `sudo apt install python3` | `brew install python` | `winget install -e --id Python.Python.3.13` |
 | Node | `node --version`, con la versión mayor que pide `npm view markdownlint-cli2 engines.node` | `sudo dnf install nodejs npm` / `sudo apt install nodejs npm` | `brew install node` | `winget install -e --id OpenJS.NodeJS.LTS` |
-| markdownlint-cli2 | `markdownlint-cli2 --help` (la primera línea da la versión) | `npm install -g --prefix ~/.local markdownlint-cli2` | `brew install markdownlint-cli2` | `npm install -g markdownlint-cli2` |
+| markdownlint-cli2 | `markdownlint-cli2 --help` (la primera línea da la versión; sale con código 2 aunque esté instalado) | `npm install -g --prefix ~/.local markdownlint-cli2` | `brew install markdownlint-cli2` | `npm install -g markdownlint-cli2` |
 
 **Tropiezos conocidos:**
 
 - **Node viejo:** si el gestor instala un Node más viejo que el que pide markdownlint-cli2 (pasa con `apt` en versiones anteriores de Debian y Ubuntu), ofrece la versión LTS con las instrucciones de <https://nodejs.org> para su distribución.
+- **markdownlint-cli2 ya instalado:** cumple si la primera línea de `--help` da la versión, aunque el código de salida no sea 0. No lo busques con `npm list -g`: no ve lo que se instaló con `--prefix ~/.local`.
 - **`PATH`:** si `markdownlint-cli2` no aparece después de instalarlo con `--prefix ~/.local`, falta `~/.local/bin` en el `PATH`; explícale al titular cómo agregarlo en su shell. En Windows, después de `winget` hay que reiniciar VS Code para que la terminal vea el `PATH` nuevo.
 - **Python en Windows:** donde la documentación diga `python3`, usa `py -3`.
 - **Sin red:** si una instalación falla porque no se resuelve un nombre o se niega la conexión, sigue «Comandos sin red».
@@ -210,7 +215,7 @@ Los registros van al archivo `ChambaKit_Registros.xlsx` de la copia, que escribe
    En Debian y Ubuntu, si crear el entorno falla por `ensurepip`, falta el paquete del sistema: `sudo apt install python3-venv`, que corre el titular (paso 2, «Instalación»). El punto termina cuando la comprobación da una versión.
 3. **Crear el archivo:** `.venv/bin/python -I herramientas/registros.py crear` (en Windows, con `.venv\Scripts\python.exe`). Su salida lista las siete pestañas de 11/REG-ESQUEMA; si dice que el archivo ya existe, no lo toques y pregúntale al titular de dónde salió.
 4. **00:** reemplaza el marcador «pendiente…» que sigue a **Registros:** por `modo local`.
-5. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Registrar desde Code con `herramientas/registros.py` (11/REG-LOCAL)» para 00, «Analizar tendencias cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»)» para 11. Ofrécele el commit de 11/REG-LOCAL («Historial y respaldo»), con el archivo nuevo y los módulos editados. Si eres Claude Code, dile que, si después conecta Google, `/configurar` pasa sus registros a una hoja («De modo local a la hoja»). La configuración termina aquí: el paso 9 es solo para la hoja.
+5. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Registrar desde Code con `herramientas/registros.py` (11/REG-LOCAL)» para 00, «Analizar tendencias cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»)» para 11. Si eres Claude Code, dile que, si después conecta Google, `/configurar` pasa sus registros a una hoja («De modo local a la hoja»). La configuración termina aquí, con el cierre de «Cómo avanzar» (punto 5), cuyo commit lleva el archivo nuevo y los módulos editados: el paso 9 es solo para la hoja.
 
 ### De modo local a la hoja
 
