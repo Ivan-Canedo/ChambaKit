@@ -1,6 +1,6 @@
 # 07 — Método de búsqueda
 
-**Versión:** 1.0 — 2026-10-17 — Plantilla inicial.
+**Versión:** 1.1 — 2026-10-18 — El canal Code es cualquier agente con terminal sobre la copia; el canal Web y la hoja necesitan Claude.
 **Estado:** método de la plantilla. Queda listo con la región de 04 y las fichas de 06, en el paso 7 de `/configurar` (Empresas).
 
 ## BUS-ALCANCE — Responsabilidad
@@ -34,10 +34,10 @@ La diferencia entre canales no es renderizar JavaScript, sino qué peticiones ll
 
 | | Code | Web |
 | --- | --- | --- |
-| Dónde | Claude Code sobre esta carpeta | Chat del proyecto en claude.ai, desde cualquier dispositivo |
+| Dónde | Un agente con terminal sobre esta carpeta: Claude Code, Antigravity u otro | Chat del proyecto en claude.ai, desde cualquier dispositivo; necesita Claude |
 | Acceso a los portales | La terminal llega directo: peticiones GET y POST | Solo la herramienta de lectura web: GET, respuesta mediada por un modelo y con caché (BUS-ACCESO-WEB) |
 | Lectura | `herramientas/buscar.py`: conteos, IDs y campos exactos (BUS-ACCESO-CODE) | Manual, página por página, con comprobación de ID |
-| Registros (00, «Registros») | La hoja, con el conector de Google Sheets; en modo local, el archivo, con `herramientas/registros.py` | La hoja, con el conector de Google Sheets; en modo local no hay canal Web |
+| Registros (00, «Registros») | La hoja, con el conector de Google Sheets, solo si el agente es Claude Code; en modo local, el archivo, con `herramientas/registros.py` | La hoja, con el conector de Google Sheets; en modo local no hay canal Web |
 | Empresas | Todas las del catálogo de 06 | Solo las fichas con canal «Web y Code» |
 
 - **`robots.txt`:** solo se usan rutas que el sitio permite, en ambos canales. La herramienta web lo respeta por sí sola. En Code, cada adaptador lo comprueba en cada búsqueda, y la ficha anota lo que se revisó al darla de alta. Si una API lo prohíbe, se busca otra ruta del sitio oficial; no se rodea.

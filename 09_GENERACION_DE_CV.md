@@ -1,6 +1,6 @@
 # 09 — Generación de CV
 
-**Versión:** 1.0 — 2026-10-17 — Plantilla inicial.
+**Versión:** 1.1 — 2026-10-18 — El canal Web necesita Claude; el archivo se genera en el canal Code con cualquier agente.
 **Estado:** método de la plantilla, con el diseño por defecto. El color del CV es un dato del titular (CV-PLANTILLA).
 
 ## CV-ALCANCE — Responsabilidad
@@ -124,7 +124,7 @@ Entregar el borrador o los archivos que efectivamente existan, con idioma, forma
 | Canal | Generación | Comprobación | Estado |
 | --- | --- | --- | --- |
 | **Code** | LibreOffice sin interfaz: FODT → PDF y FODT → DOCX | `pdftotext` (texto y orden), `pdftoppm` (vistas PNG para revisar), `pdfinfo` (páginas, tamaño) y `pdffonts` (fuentes incrustadas), de poppler | **Probado en Linux.** El paso 6 de `/configurar` instala LibreOffice, poppler y la fuente Carlito |
-| **Web** (proyecto en claude.ai) | No comprobado | No comprobado | El contenido se puede adaptar en la web y el archivo se genera en Code |
+| **Web** (proyecto en claude.ai; necesita Claude) | No comprobado | No comprobado | El contenido se puede adaptar en la web y el archivo se genera en Code |
 
 No hacen falta pandoc, python-docx ni reportlab.
 

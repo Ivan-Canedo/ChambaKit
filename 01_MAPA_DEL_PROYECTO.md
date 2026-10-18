@@ -1,6 +1,6 @@
 # 01 — Mapa y estado del proyecto
 
-**Versión:** 1.1 — 2026-10-18 — Agrega los punteros de las skills en `.agents/skills/`.
+**Versión:** 1.2 — 2026-10-18 — El canal Code es cualquier agente con terminal sobre la copia.
 
 ## ESTADO — Punto de continuidad
 
@@ -10,17 +10,17 @@
 
 | Módulo | Versión | Estado | Siguiente paso sugerido |
 | --- | --- | --- | --- |
-| 00 Instrucciones | 1.0 | Sin llenar | `/configurar`, paso 8 (Registros): anota dónde viven los registros |
+| 00 Instrucciones | 1.1 | Sin llenar | `/configurar`, paso 8 (Registros): anota dónde viven los registros |
 | 02 Perfil maestro | 1.0 | Sin llenar | `/configurar`, paso 3 (Perfil maestro): extrae la trayectoria del CV actual y entrevista lo que falte |
 | 03 CV base | 1.0 | Sin llenar | `/configurar`, paso 6 (CV base): redacta el CV en español e inglés desde 02 |
 | 04 Preferencias | 1.0 | Sin llenar | `/configurar`, paso 4 (Preferencias): región, modalidad, sueldo y exclusiones |
 | 05 Habilidades y roles | 1.0 | Sin llenar | `/configurar`, paso 5 (Habilidades y roles): matriz de evidencias y familias de roles desde 02 y 04 |
 | 06 Empresas | 1.0 | Sin llenar | `/configurar`, paso 7 (Empresas): fichas de las empresas objetivo |
-| 07 Método de búsqueda | 1.0 | Sin llenar | `/configurar`, paso 7 (Empresas): queda listo con la región de 04 y las fichas de 06 |
-| 08 Evaluación | 1.0 | Sin llenar | `/configurar`, paso 5 (Habilidades y roles): queda listo con las condiciones de 04 y las familias de 05 |
-| 09 Generación de CV | 1.0 | Sin llenar | `/configurar`, paso 6 (CV base): color del CV |
+| 07 Método de búsqueda | 1.1 | Sin llenar | `/configurar`, paso 7 (Empresas): queda listo con la región de 04 y las fichas de 06 |
+| 08 Evaluación | 1.1 | Sin llenar | `/configurar`, paso 5 (Habilidades y roles): queda listo con las condiciones de 04 y las familias de 05 |
+| 09 Generación de CV | 1.1 | Sin llenar | `/configurar`, paso 6 (CV base): color del CV |
 | 10 Tendencias | 1.0 | Sin llenar | `/configurar`, paso 8 (Registros): queda listo cuando existen los registros |
-| 11 Esquema de registros | 1.0 | Sin llenar | `/configurar`, paso 8 (Registros): crea los registros desde este esquema |
+| 11 Esquema de registros | 1.1 | Sin llenar | `/configurar`, paso 8 (Registros): crea los registros desde este esquema |
 
 **Orden sugerido:**
 
@@ -75,10 +75,10 @@ No están en el conocimiento del proyecto. Si una sesión los necesita, hay que 
 
 - **Documentos fuente de 02** (CV anteriores, el PDF de LinkedIn, constancias): se citan como fuentes F##; citarlos por nombre no da acceso a su contenido.
 - **`muestras_cv/`:** CV generados, con su fuente Markdown y sus notas de trabajo (09/CV-MUESTRAS).
-- **`AGENTS.md` y `CLAUDE.md`:** instrucciones para trabajar esta carpeta con Claude Code, el único lugar donde se editan los módulos.
+- **`AGENTS.md` y `CLAUDE.md`:** instrucciones para el agente que trabaja esta carpeta en el canal Code, el único lugar donde se editan los módulos. `CLAUDE.md` solo remite a `AGENTS.md`.
 - **`.claude/skills/configurar/`:** la skill `/configurar`, que configura la copia paso a paso según la tabla ESTADO.
 - **`.claude/skills/actualizar/` y `CAMBIOS.md`:** la skill `/actualizar`, que lleva a la copia los cambios de una versión más nueva de la plantilla sin tocar sus datos, y la lista de lo que trae cada versión. Se invoca a mano: nada avisa al abrir la copia.
-- **`.agents/skills/`:** un puntero por skill, con su mismo nombre y descripción, que remite a la skill completa de `.claude/skills/`. Existen para que otros agentes, que leen esa carpeta y no la de Claude Code (Antigravity, Gemini CLI), encuentren `/configurar` y `/actualizar`; las skills se editan en `.claude/skills/` y el puntero solo cambia si cambia su nombre o su descripción.
+- **`.agents/skills/`:** un puntero por skill, con su mismo nombre y descripción, que remite a la skill completa de `.claude/skills/`. Existen para que otros agentes, que leen esa carpeta y no `.claude/skills/` (Antigravity, Gemini CLI), encuentren `/configurar` y `/actualizar`; las skills se editan en `.claude/skills/` y el puntero solo cambia si cambia su nombre o su descripción.
 - **`.markdownlint-cli2.jsonc`:** reglas de formato Markdown que se revisan en Code tras editar (AGENTS.md).
 - **`herramientas/buscar.py`:** script de búsqueda del canal Code (07/BUS-ACCESO-CODE); no se sube al proyecto.
 - **`herramientas/generar_cv.py`:** generador y comprobador de CV del canal Code (09/CV-HERRAMIENTAS); no se sube al proyecto.

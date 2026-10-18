@@ -1,6 +1,6 @@
 # 08 — Evaluación de vacantes
 
-**Versión:** 1.0 — 2026-10-17 — Plantilla inicial.
+**Versión:** 1.1 — 2026-10-18 — Habla de «el agente», sea Claude u otro.
 **Estado:** método de la plantilla. Las condiciones salen de 04 y las familias de 05; queda listo con el paso 5 de `/configurar` (Habilidades y roles).
 **Evaluaciones vigentes desde:** 1.0. Sube a la versión nueva solo si el cambio altera la clasificación de requisitos, las categorías, el nivel, la cobertura o las condiciones. Un cambio de 04 no lo sube: lo cubre la regla de EVAL-REGISTRO.
 
@@ -154,7 +154,7 @@ Dimensión aparte: no modifica el encaje ni las condiciones. Se calcula al armar
 - Todas las preguntas van en un solo bloque, ordenadas por impacto.
 - Las respuestas valen para el resto de la sesión y se juntan, con fecha, como **propuestas para 02**. No se recalculan otras vacantes salvo que el titular las pida.
 
-**B. Para aclarar en el proceso:** las hace el titular, nunca Claude. Incluyen las condiciones pendientes y los requisitos ambiguos que sean núcleo o estén marcados como insuficientes. Van en el detalle.
+**B. Para aclarar en el proceso:** las hace el titular, nunca el agente. Incluyen las condiciones pendientes y los requisitos ambiguos que sean núcleo o estén marcados como insuficientes. Van en el detalle.
 
 ## EVAL-INFORME — Tabla resumen y detalle
 

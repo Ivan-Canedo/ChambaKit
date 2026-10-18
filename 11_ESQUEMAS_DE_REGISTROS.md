@@ -1,6 +1,6 @@
 # 11 — Esquema de registros
 
-**Versión:** 1.0 — 2026-10-17 — Plantilla inicial.
+**Versión:** 1.1 — 2026-10-18 — Habla de «el agente»; la hoja necesita Claude.
 **Estado:** esquema de la plantilla. El paso 8 de `/configurar` (Registros) crea la hoja o el archivo local desde el bloque de REG-ESQUEMA.
 
 ## Responsabilidad
@@ -11,10 +11,10 @@ Definir campos, relaciones, autoridades y versionado de los datos de búsquedas,
 
 **En uno de dos lugares, con el mismo esquema (REG-ESQUEMA):**
 
-- **Hoja de Google `ChambaKit_Registros`**, con una pestaña por tabla. La crea el paso 8 de `/configurar` desde REG-ESQUEMA, según REG-VALIDACION. Sirve a los canales Code y Web.
+- **Hoja de Google `ChambaKit_Registros`**, con una pestaña por tabla. La crea el paso 8 de `/configurar` desde REG-ESQUEMA, según REG-VALIDACION. Necesita Claude, que la usa con sus conectores de Google. Sirve a los canales Code y Web.
 - **Modo local:** el archivo `ChambaKit_Registros.xlsx` de la copia, cuando el titular no conecta Google (REG-LOCAL). Solo sirve al canal Code.
 
-**Cuál usa la copia:** lo dice 00 («Registros»): una URL es la hoja; `modo local`, el archivo; «pendiente», todavía no hay registros. Claude lee y escribe solo en ese lugar.
+**Cuál usa la copia:** lo dice 00 («Registros»): una URL es la hoja; `modo local`, el archivo; «pendiente», todavía no hay registros. El agente lee y escribe solo en ese lugar.
 
 **Cambio de lugar:** del modo local a la hoja, nunca al revés. Lo hace `/configurar` (paso 8, «De modo local a la hoja») cuando el titular conecta Google: copia las filas a una hoja nueva, compara los conteos de cada pestaña y, si coinciden, retira el archivo, cuya historia queda en git.
 
@@ -192,7 +192,7 @@ La observación es la evidencia fechada (REG-DECISIONES). La evidencia mínima d
 
 ### `informes`
 
-La tabla resumen de cada búsqueda (08/EVAL-INFORME), para consultarla desde cualquier dispositivo sin rehacerla. Claude escribe solo los IDs; las demás columnas se calculan desde `vacantes` y `evaluaciones`, en la hoja con fórmulas y en modo local con la herramienta (REG-LOCAL), que sigue su misma lógica.
+La tabla resumen de cada búsqueda (08/EVAL-INFORME), para consultarla desde cualquier dispositivo sin rehacerla. El agente escribe solo los IDs; las demás columnas se calculan desde `vacantes` y `evaluaciones`, en la hoja con fórmulas y en modo local con la herramienta (REG-LOCAL), que sigue su misma lógica.
 
 | Columna | Tipo | Oblig. | Valores y reglas |
 | --- | --- | --- | --- |
@@ -476,7 +476,7 @@ En Windows, el Python es `.venv\Scripts\python.exe`. `--help` da las órdenes y 
 - **Escritura:** `agregar` y `actualizar` comprueban cada fila que escriben contra el bloque: lo mismo que valida la hoja, más la obligatoriedad, y las referencias rechazan en lugar de solo marcar. Si una fila no cumple, no escriben ninguna y dicen qué corregir. Solo comprueban las filas que escriben: un cambio no vuelve a comprobar las filas que citan a la cambiada. Las referencias se resuelven contra lo ya registrado más lo de la misma llamada, así que una búsqueda se registra en dos llamadas (07/BUS-REGISTRO): `agregar` con todas sus filas nuevas, de todas las pestañas, y `actualizar` con los cambios a las filas ya registradas.
 - **Lectura:** `leer` da una pestaña completa o las filas de unos IDs. `informe` da la tabla resumen de una búsqueda: sus filas de `informes` con las columnas calculadas, con la lógica de las fórmulas del bloque y la fecha de hoy en la zona horaria de 04. `exportar` da todas las pestañas a la vez, fila por fila y con el rango de la hoja donde van, para el cambio a la hoja (REG-HOJA); los valores que la hoja interpretaría ya llevan su `'` delante.
 - **Encabezados:** la herramienta los compara con el bloque en cada uso y se detiene si no coinciden (REG-DECISIONES, «Encabezados»).
-- **Historial y respaldo:** git. El archivo se versiona en la copia, así que no se ignora. Al cerrar una sesión que lo modificó, Claude le ofrece al titular un commit con él y, si la copia tiene remoto privado, el push.
+- **Historial y respaldo:** git. El archivo se versiona en la copia, así que no se ignora. Al cerrar una sesión que lo modificó, el agente le ofrece al titular un commit con él y, si la copia tiene remoto privado, el push.
 - **Edición a mano:** el titular puede abrir el archivo en una hoja de cálculo para consultarlo. Las filas se escriben con la herramienta, que es la que las comprueba.
 
 ## REG-DECISIONES — Decisiones del esquema
@@ -491,7 +491,7 @@ En Windows, el Python es `.venv\Scripts\python.exe`. `--help` da las órdenes y 
 - **Datos sintéticos de prueba:** marcarlos como tales y borrarlos después.
 - **Ámbito:** cada pestaña abarca todas las empresas; no crear registros por empresa.
 - **Encabezados:** no se cambian sin acordarlo aquí. Un cambio se hace en REG-CAMPOS, en el bloque de REG-ESQUEMA y en la hoja o el archivo local; la hoja se comprueba según REG-VALIDACION.
-- **Postulaciones:** no se registran y no hay pestaña de seguimiento. Para postular, el titular pide el CV en el formato que exija la vacante (09) y postula por su cuenta, manualmente. El documento queda en `documentos`. Claude no envía candidaturas ni contacta a terceros.
+- **Postulaciones:** no se registran y no hay pestaña de seguimiento. Para postular, el titular pide el CV en el formato que exija la vacante (09) y postula por su cuenta, manualmente. El documento queda en `documentos`. El agente no envía candidaturas ni contacta a terceros.
 
 ## REG-PENDIENTES
 

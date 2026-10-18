@@ -6,7 +6,7 @@ Esta carpeta es la copia de ChambaKit de un titular: los módulos 00–11 con su
 
 1. Corre `git config --local --get chambakit.mantenedor`. Si da `true`, hablas con el mantenedor de la plantilla: lee `CONTRIBUTING.md` y salta al paso 4.
 2. Lee `00_INSTRUCCIONES_PROYECTO.md` (las mismas reglas que el proyecto web) y la tabla ESTADO de `01_MAPA_DEL_PROYECTO.md`.
-3. Si alguna fila de ESTADO dice «Sin llenar», ofrece `/configurar` en tu primera respuesta.
+3. Si alguna fila de ESTADO dice «Sin llenar», ofrece configurar la copia en tu primera respuesta: con `/configurar` si admites comandos de skill; si no, dile al titular que pida «configura mi copia».
 4. Lee el módulo pedido.
 
 ## Reglas de trabajo
@@ -19,7 +19,7 @@ Esta carpeta es la copia de ChambaKit de un titular: los módulos 00–11 con su
 - **Alcance de cada sesión:** un módulo o sección a la vez, salvo que el titular pida otra cosa. Un módulo ya lleno conserva su contenido, sus fuentes y sus IDs: amplíalo con hechos nuevos en lugar de repetir su entrevista.
 - **Datos y búsquedas:** no inventes datos, métricas, preferencias ni verificaciones; lo que falte se le pregunta al titular. No inicies búsquedas laborales por abrir la copia.
 - **Empresas:** cada una tiene su ficha con ID dentro de 06; no crees `EMPRESA_<NOMBRE>.md`.
-- **Canal Code (07/BUS-CANALES):** aquí la terminal sí llega a los portales. Las búsquedas usan `python3 -I herramientas/buscar.py` y se registran donde indica 00, con `canal` = `Code`. Atiende las líneas «revisar» y `[FALLO]` antes de registrar. Guarda la salida JSON en el directorio temporal de la sesión, no en esta carpeta.
+- **Canal Code (07/BUS-CANALES):** aquí la terminal sí llega a los portales. Las búsquedas usan `python3 -I herramientas/buscar.py` y se registran donde indica 00, con `canal` = `Code`. Atiende las líneas «revisar» y `[FALLO]` antes de registrar. Guarda la salida JSON en el directorio temporal de la sesión o, si no tienes uno, en el del sistema; nunca en esta carpeta.
 - **Empresa nueva:** identifica la plataforma de reclutamiento de su portal. Si el script ya tiene su adaptador, basta la ficha en 06 con su configuración. Si no, busca la API que usa el portal y revisa su `robots.txt` antes de construir un adaptador en esta copia: no uses rutas que prohíba.
 - **Formato Markdown:** tras editar un `.md`, corre `markdownlint-cli2` sobre él y deja cero advertencias (reglas en `.markdownlint-cli2.jsonc`; lo instala `/configurar`). En CV-ES y CV-EN de 03, conserva las negritas y los niveles de `###` al corregir el lint: `herramientas/generar_cv.py` lee ese formato literal (09/CV-HERRAMIENTAS).
 - **Al cerrar una sesión que modificó un módulo:**
