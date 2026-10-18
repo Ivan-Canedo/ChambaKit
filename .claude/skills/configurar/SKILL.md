@@ -21,9 +21,9 @@ Si `git config --local --get chambakit.mantenedor` da `true`, esta carpeta es la
 Los módulos van a guardar datos personales del titular, así que su copia debe ser privada o no tener remoto.
 
 1. Lista los remotos con `git remote -v`. Si la carpeta no es un repositorio de git o no tiene remotos, dilo en una línea y pasa al paso 2.
-2. Si un remoto apunta a la plantilla pública (`github.com/Ivan-Canedo/ChambaKit`, por HTTPS o SSH), el titular clonó la plantilla en lugar de crear su copia. Dile que cree su copia privada y detén la configuración hasta que trabaje en ella. Tiene dos caminos:
-   - **Copia en GitHub:** en la página de la plantilla, «Use this template» → «Create a new repository» con visibilidad **Private**; después clona ese repositorio y ábrelo en VS Code.
-   - **Sin GitHub:** quitar el remoto de este clon (`git remote remove <nombre>`), con su permiso, y seguir sin remoto.
+2. Si un remoto apunta a la plantilla pública (`github.com/Ivan-Canedo/ChambaKit`, por HTTPS o SSH), el titular clonó la plantilla en lugar de crear su copia. Ofrécele dos caminos, en este orden:
+   - **Solo en su equipo:** con su permiso, quita ese remoto (`git remote remove <nombre>`). Dile en una línea que su copia queda solo en su equipo y que en el paso 8 le propones cómo respaldarla. Sigue con el punto 3.
+   - **Copia en GitHub:** en la página de la plantilla, «Use this template» → «Create a new repository» con visibilidad **Private**; después clona ese repositorio y ábrelo en VS Code. Detén la configuración hasta que trabaje en esa copia: al correr `/configurar` en ella, este paso revisa su visibilidad.
 3. Revisa la visibilidad de cada remoto restante:
    - **GitHub:** `gh repo view <dueño>/<repo> --json visibility --jq .visibility`, si `gh` está instalado y con sesión. Si no, `curl -s -o /dev/null -w '%{http_code}' https://api.github.com/repos/<dueño>/<repo>`: `200` es público; `404`, privado.
    - **Otro servicio:** pídele al titular que confirme la visibilidad en la configuración del repositorio.
@@ -187,13 +187,14 @@ Drive crea el archivo y Sheets lo arma. La hoja queda en el Drive del titular, p
 1. **Crear la hoja:** sigue 11/REG-VALIDACION («Creación») con el bloque de 11/REG-ESQUEMA, la `zona_horaria` del bloque de 04/PREF-UBICACION y, para la lista de `empresa_id`, los IDs de 06/CAT-EMPRESAS.
 2. **Comprobar:** sigue REG-VALIDACION («Comprobación»), que termina borrando las filas `PRUEBA-`. Si algo no cuadra, corrígelo en la hoja y repite la comprobación; no sigas con una hoja que no la pasa.
 3. **URL:** en 00, reemplaza el marcador «pendiente…» que sigue a **Registros:** por la URL de la hoja entre `<` y `>`, que markdownlint pide para una URL suelta (`<https://docs.google.com/spreadsheets/d/…/>`). Dale el enlace al titular.
-4. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Volver a pegar en el proyecto web cada vez que cambie» para 00, «Analizar tendencias cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»); al agregar una empresa a 06, agregar su ID a la lista de `empresa_id`» para 11.
+4. **Respaldo:** si la copia no tiene un remoto privado, dile que sus registros quedan en su hoja, pero sus módulos solo en su equipo, y que el proyecto web del paso 9 guarda una réplica de ellos en su cuenta de claude.ai.
+5. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Volver a pegar en el proyecto web cada vez que cambie» para 00, «Analizar tendencias cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»); al agregar una empresa a 06, agregar su ID a la lista de `empresa_id`» para 11.
 
 ### Modo local
 
 Los registros van al archivo `ChambaKit_Registros.xlsx` de la copia, que escribe y lee `herramientas/registros.py` (11/REG-LOCAL).
 
-1. **Aviso:** antes de instalar o crear nada, dile al titular que en modo local el canal Web no funciona: un proyecto de claude.ai no puede leer ni escribir ese archivo, así que búsquedas, evaluaciones y registros se hacen solo desde Claude Code, en esta carpeta. El respaldo y el historial del archivo son los commits de su copia. Pídele que confirme; si no confirma, detén la configuración en este paso.
+1. **Aviso:** antes de instalar o crear nada, dile al titular que en modo local el canal Web no funciona: un proyecto de claude.ai no puede leer ni escribir ese archivo, así que búsquedas, evaluaciones y registros se hacen solo desde Claude Code, en esta carpeta. El respaldo y el historial del archivo son los commits de su copia; sin un remoto privado, solo viven en su equipo: si lo pierde, pierde su copia y sus registros, y le ofreces guiarlo a un respaldo. Pídele que confirme; si no confirma, detén la configuración en este paso.
 2. **Entorno virtual:** la herramienta usa `openpyxl`, que va en un entorno virtual dentro de la copia (`.venv/`, que git ignora), no en el Python del sistema. Muéstrale los comandos de su sistema (paso 2) y pide su permiso antes de correrlos:
 
    | Sistema | Crear el entorno | Instalar `openpyxl` | Comprobación |

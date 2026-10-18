@@ -44,7 +44,7 @@ Si te faltan, `/configurar` te guía para conectarlos. Si no los conectas, tu co
 
 Tu copia va a guardar tus datos personales: contacto, trayectoria, sueldo deseado, empresas y búsquedas. En un repositorio público, cualquiera podría leerlos. Por eso tu copia debe ser un repositorio privado o una carpeta sin remoto.
 
-No uses «Fork»: el fork de un repositorio público también es público. Si clonas esta plantilla en lugar de crear tu copia, Claude te lo dice y no la configura hasta que trabajes en tu copia o le quites el remoto al clon para seguir sin GitHub. Antes de llenar nada, Claude revisa la visibilidad de tu copia y te avisa si es pública.
+No uses «Fork»: el fork de un repositorio público también es público. Si clonas esta plantilla en lugar de crear tu copia, Claude te lo dice y te ofrece desconectar el clon de GitHub, para que siga solo en tu equipo, o crear tu copia privada con «Use this template». Antes de llenar nada, Claude revisa la visibilidad de tu copia y te avisa si es pública.
 
 ### Con «Use this template»
 
