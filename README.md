@@ -83,6 +83,12 @@ Puedes repartirlo en varias sesiones. El avance queda en la tabla ESTADO de `01_
 
 Con la copia configurada, pídele a Claude lo que necesites con tus palabras: buscar vacantes, evaluar una, adaptar tu CV a ella o revisar tendencias.
 
+## Actualiza tu copia
+
+La plantilla publica versiones nuevas, con lo que trae cada una en [CAMBIOS.md](CAMBIOS.md). Tu copia no se entera sola: cuando quieras las mejoras, escribe `/actualizar` en Claude Code. Claude trae la versión más reciente, la fusiona archivo por archivo con tu copia y conserva lo que escribiste; si un cambio choca con tus datos, te pregunta. Al final te propone un solo commit, que puedes revisar antes.
+
+Necesita que tu copia sea un repositorio de git sin cambios pendientes. Si la creaste con el ZIP y todavía no es repositorio, conviértela con `git init` y un primer commit con todo.
+
 ## Dónde se usa
 
 ChambaKit tiene dos canales:

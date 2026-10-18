@@ -20,6 +20,14 @@ _Avoid_: template, repo base
 El repositorio privado de un titular, creado desde la plantilla y llenado con sus datos.
 _Avoid_: fork, clon
 
+**Versión de la plantilla**:
+Una publicación numerada de la plantilla (1.0, 1.1…). Cada copia anota de cuál salió o a cuál se actualizó por última vez.
+_Avoid_: release, versión del módulo
+
+**Actualización**:
+Llevar a una copia los cambios de una versión más nueva de la plantilla, conservando lo que escribió el titular.
+_Avoid_: migración, sincronización, merge
+
 ## Uso
 
 **Canal**:

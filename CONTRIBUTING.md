@@ -19,7 +19,7 @@ Valen las reglas de `AGENTS.md`, con estos cambios:
 - **Los módulos son plantilla:** estructura, instrucciones breves y marcadores «pendiente», sin datos de ninguna persona ni nombres de empresas, ni siquiera de ejemplo. Sus filas de ESTADO siguen en «Sin llenar».
 - **Remoto público a propósito:** la revisión de «Copia privada» de `AGENTS.md` no aplica a la plantilla.
 - **Sin registros ni búsquedas reales:** la plantilla no tiene hoja de registros ni proyecto web. Los scripts se prueban con datos ficticios, en un clon de prueba (ver «Probar como titular»).
-- **Versión de la plantilla:** vive en la tabla ESTADO de 01. Súbela con cada cambio que se publique; es la que anota cada copia nueva.
+- **Versión de la plantilla:** vive en la tabla ESTADO de 01, junto a la URL de la plantilla; es la que anota cada copia nueva y de la que parte `/actualizar` (ADR 0004). Ver «Versión de la plantilla».
 
 ## Agent skills
 
@@ -79,6 +79,19 @@ El clon de prueba solo lleva lo que ya tiene commit. Para probar cambios sin com
 
 Al abrir el clon de prueba en VS Code con Claude Code, el agente debe ofrecer `/configurar`. Marca como sintéticos los datos de prueba y bórralos al terminar, incluida cualquier hoja de prueba en Drive.
 
-## Pendientes
+## Versión de la plantilla
 
-- **Skill `/actualizar`:** llevará a una copia las mejoras de una versión nueva de la plantilla, a partir de la «Versión de la plantilla» que anota 01.
+Cada versión publicada es una etiqueta `vX.Y` sobre su commit. `/actualizar` fusiona cada archivo de la copia en tres vías, con la etiqueta que anota su 01 como base, así que una etiqueta publicada no se mueve ni se borra. Para publicar una versión:
+
+1. Sube la versión en la línea **Versión de la plantilla** de 01. Los módulos de la plantilla no cambian de versión por esto: la copia lleva la suya.
+2. Agrega a `CAMBIOS.md` la sección `## vX.Y — fecha`, arriba de las anteriores, con dos subsecciones:
+   - `### Qué cambió`: en pocas líneas, para el titular.
+   - `### En la copia`: una lista numerada de lo que la fusión no ve, como columnas nuevas en los registros o datos que hay que preguntarle al titular. Cada acción va marcada **automática** o **con el titular** y, si toca un módulo que en la copia puede estar «Configurado», dice qué paso retomar en su fila de ESTADO. Si no hay acciones, «Sin acciones».
+3. Commit, etiqueta y push de los dos:
+
+   ```sh
+   git tag vX.Y
+   git push origin main vX.Y
+   ```
+
+`v1.0` es el commit que trae `/actualizar` y `CAMBIOS.md`.

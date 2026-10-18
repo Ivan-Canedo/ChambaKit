@@ -4,7 +4,7 @@
 
 ## ESTADO — Punto de continuidad
 
-**Versión de la plantilla:** 1.0 — la de ChambaKit de la que salió esta copia. Editar módulos no la cambia.
+**Versión de la plantilla:** 1.0, de <https://github.com/Ivan-Canedo/ChambaKit> — la de ChambaKit de la que salió esta copia o a la que se actualizó por última vez. En la copia, solo `/actualizar` la cambia.
 
 **Estados:** «Sin llenar» espera el paso de `/configurar` que nombra su fila; «Configurado» ya lo pasó.
 
@@ -77,6 +77,7 @@ No están en el conocimiento del proyecto. Si una sesión los necesita, hay que 
 - **`muestras_cv/`:** CV generados, con su fuente Markdown y sus notas de trabajo (09/CV-MUESTRAS).
 - **`AGENTS.md` y `CLAUDE.md`:** instrucciones para trabajar esta carpeta con Claude Code, el único lugar donde se editan los módulos.
 - **`.claude/skills/configurar/`:** la skill `/configurar`, que configura la copia paso a paso según la tabla ESTADO.
+- **`.claude/skills/actualizar/` y `CAMBIOS.md`:** la skill `/actualizar`, que lleva a la copia los cambios de una versión más nueva de la plantilla sin tocar sus datos, y la lista de lo que trae cada versión. Se invoca a mano: nada avisa al abrir la copia.
 - **`.markdownlint-cli2.jsonc`:** reglas de formato Markdown que se revisan en Code tras editar (AGENTS.md).
 - **`herramientas/buscar.py`:** script de búsqueda del canal Code (07/BUS-ACCESO-CODE); no se sube al proyecto.
 - **`herramientas/generar_cv.py`:** generador y comprobador de CV del canal Code (09/CV-HERRAMIENTAS); no se sube al proyecto.
