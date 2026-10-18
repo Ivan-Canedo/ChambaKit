@@ -54,7 +54,7 @@ La plantilla es pública: ningún archivo puede llevar datos de una persona real
 
 ## Pruebas
 
-Las pruebas automáticas usan `unittest`, sin red, y llaman a cada script por su línea de comandos con entradas ficticias. La excepción es la búsqueda en un portal: la prueba importa `buscar.py` desde una copia ficticia, cambia `pedir()`, su única función de red, por un portal falso y corre `main()`. Con `-B` no quedan cachés:
+Las pruebas automáticas usan `unittest`, sin red, y llaman a cada script por su línea de comandos con entradas ficticias. La excepción es la búsqueda en un portal: la prueba importa `buscar.py` desde una copia ficticia, cambia `pedir()`, su única función de red, por un portal falso y corre `main()`. La otra es `test_punteros_skills.py`, que no llama a ningún script: lee las skills del repo y comprueba que cada una de `.claude/skills/` tenga en `.agents/skills/` su puntero, con el mismo `name` y la misma `description`. Con `-B` no quedan cachés:
 
 ```sh
 python3 -I -B -m unittest discover -s herramientas/pruebas
