@@ -1,6 +1,6 @@
 # 08 — Evaluación de vacantes
 
-**Versión:** 1.1 — 2026-10-18 — Habla de «el agente», sea Claude u otro.
+**Versión:** 1.2 — 2026-10-27 — La herramienta de registros toma el umbral de «antigua» de EVAL-ACUERDOS; EVAL-INFORME y EVAL-REGISTRO ya no hablan de la hoja.
 **Estado:** método de la plantilla. Las condiciones salen de 04 y las familias de 05; queda listo con el paso 5 de `/configurar` (Habilidades y roles).
 **Evaluaciones vigentes desde:** 1.0. Sube a la versión nueva solo si el cambio altera la clasificación de requisitos, las categorías, el nivel, la cobertura o las condiciones. Un cambio de 04 no lo sube: lo cubre la regla de EVAL-REGISTRO.
 
@@ -23,7 +23,7 @@ Comparar los requisitos y condiciones de una vacante con la trayectoria y las pr
 
 **Valor por defecto (ajustable):**
 
-- **Marca «antigua»:** a partir de 20 días publicada (EVAL-ANTIGUEDAD). Señala las vacantes abiertas hace tiempo para que el titular lo considere al decidir; no excluye. La fórmula de `antiguedad` de 11 también lo usa, y el modo local lo toma de ella: si cambia, se cambia ahí (11/REG-CAMPOS, `informes`).
+- **Marca «antigua»:** a partir de 20 días publicada (EVAL-ANTIGUEDAD). Señala las vacantes abiertas hace tiempo para que el titular lo considere al decidir; no excluye. La herramienta de registros lee el número de esta línea para `informe` y la instantánea (11/REG-CAMPOS, `informes`): si el titular lo cambia, se cambia aquí, en cifras, y sin esta línea vale 20.
 
 **Decisiones del titular:** si el titular cambia un valor por defecto, el cambio se anota aquí, con ID `EVAL-U##` y fecha, y se aplica en la sección que lo usa. Sus condiciones no se anotan aquí: su autoridad es 04 (EVAL-CONDICIONES).
 
@@ -143,7 +143,7 @@ Dimensión aparte: no modifica el encaje ni las condiciones. Se calcula al armar
 | Solo `primera_deteccion` anterior al día de hoy | `≥ N d` |
 | Nada | `—` |
 
-- **Marca «antigua»:** a partir de **20 días**, valor por defecto ajustable (EVAL-ACUERDOS). Es una señal y no excluye la vacante.
+- **Marca «antigua»:** a partir del umbral de EVAL-ACUERDOS, 20 días por defecto. Es una señal y no excluye la vacante.
 - **Republicaciones:** la fecha publicada puede ser de una republicación. Con el tiempo, `primera_deteccion` corrige esto. La fecha confiable de cada empresa se define en su ficha de 06 y en 07.
 
 ## EVAL-PREGUNTAS — Preguntas prioritarias
@@ -177,15 +177,13 @@ Es lo que se entrega tras una búsqueda. Se ordena por estrellas y, con empate, 
 
 Debajo de la tabla, una línea: «N sin relación con las familias de 05: no evaluadas».
 
-**Registro en `informes` (11):** al final del registro de la búsqueda (07/BUS-REGISTRO), una fila por vacante de la tabla, en su orden, con `busqueda_id`, `vacante_id` y la `evaluacion_id` que se muestra. Encaje, antigüedad y alertas los calculan las fórmulas de la pestaña o, en modo local, la herramienta de 11/REG-LOCAL, con el mismo formato de esta tabla. La línea de no evaluadas no se guarda.
+**Registro en `informes` (11):** al final del registro de la búsqueda (07/BUS-REGISTRO), una fila por vacante de la tabla, en su orden, con `busqueda_id`, `vacante_id` y la `evaluacion_id` que se muestra. Encaje, antigüedad y alertas no se guardan: los calcula la herramienta de 11/REG-LOCAL, con el mismo formato de esta tabla. La línea de no evaluadas no se guarda.
 
-**Desde otro canal o dispositivo** (Web, teléfono), la tabla no se rehace:
+**Consultarla después,** la tabla no se rehace:
 
-1. **Mostrarla:** leer la columna A de `informes`, ubicar el bloque de la búsqueda pedida (la última, si no se dice cuál) y leer solo esas filas. Se presenta como arriba, con `url_oficial` como liga. La antigüedad ya viene al día.
-2. **Detalle de una vacante:** leer solo sus filas: la de `vacantes`, la de su `ultima_observacion_id`, la evaluación que muestra la tabla y sus requisitos en `habilidades_vacante`. En esa pestaña, la columna B indica dónde está su bloque; el conjunto vigente es el de la última observación analizada (11/REG-IDENTIDAD). Los IDs son consecutivos y no se borran filas, así que `VAC-N`, `OBS-N` y `EVA-N` suelen estar en la fila N + 1; se confirma con el ID de la fila leída.
-3. **Límite:** el texto del anuncio no se guarda (11/REG-DECISIONES), así que el detalle sale de los requisitos registrados. Desde Web no se pueden reabrir los anuncios de las empresas «Solo Code»; el titular sí puede abrir la liga.
-
-**En modo local** (solo Code), `informe` de la herramienta de 11/REG-LOCAL da la tabla de una búsqueda ya calculada, y `leer` las filas del detalle.
+- **En Code:** `informe` de la herramienta de 11/REG-LOCAL da la tabla de una búsqueda ya calculada, y `leer` las filas del detalle de una vacante: la de `vacantes`, la de su `ultima_observacion_id`, la evaluación que muestra la tabla y sus requisitos en `habilidades_vacante`, cuyo conjunto vigente es el de la última observación analizada (11/REG-IDENTIDAD).
+- **En Web:** la instantánea (11/REG-INSTANTANEA) trae la tabla de las últimas búsquedas en `informes.md` y el detalle de cada vacante evaluada no cerrada en `vacantes.md`, con su antigüedad a la fecha de exportación.
+- **Límite:** el texto del anuncio no se guarda (11/REG-DECISIONES), así que el detalle sale de los requisitos registrados.
 
 ### Detalle
 
@@ -206,7 +204,7 @@ El esquema está en 11. Sirve para no volver a evaluar una vacante que reaparece
 
 - **Una fila por evaluación,** incluidas las excluidas. No se registran las vacantes no evaluadas por no tener relación con las familias de 05.
 - **Reutilización:** una vacante que reaparece usa su última evaluación si la observación evaluada sigue teniendo el conjunto vigente de habilidades (11/REG-IDENTIDAD) y si `version_perfil` y `version_evaluacion` son iguales o posteriores a «Evaluaciones vigentes desde» de 02 y de 08, respectivamente. Las versiones se comparan número por número (1.10 es posterior a 1.9). Si 04 cambió después de `fecha_evaluacion`, se reevalúan las condiciones. Si algo cambió, se agrega una fila nueva.
-- **Aclaraciones:** si las preguntas A cambian el resultado, se actualiza la misma fila; el historial de Sheets, o git en modo local, conserva la versión anterior.
+- **Aclaraciones:** si las preguntas A cambian el resultado, se actualiza la misma fila; git conserva la versión anterior (11/REG-LOCAL, «Historial y respaldo»).
 - **Núcleos:** el detalle de una vacante evaluada antes usa los núcleos guardados en `nucleos`, para no contradecir las estrellas guardadas.
 - **No se guardan** las categorías por requisito (el detalle las regenera con `habilidades_vacante` y 02), la familia ROL, la antigüedad (se calcula) ni notas.
 

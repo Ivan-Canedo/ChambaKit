@@ -1,6 +1,6 @@
 # ChambaKit — Instrucciones del proyecto
 
-Versión 1.1 — 2026-10-18 — Habla de «el agente» y del canal Code; la hoja de Google necesita Claude.
+Versión 1.2 — 2026-10-27 — Cita 11/REG-LUGAR, antes REG-HOJA.
 
 Este texto va en el campo «Instrucciones» del proyecto.
 
@@ -30,7 +30,7 @@ Conversa en español.
 
 **Registros:** «pendiente: `/configurar`, en el paso Registros, escribe aquí la URL de la hoja de Google o `modo local`; mientras tanto, no hay registros»
 
-- **Dónde:** una URL es la hoja de Google `ChambaKit_Registros`, que necesita Claude y sus conectores de Google; `modo local`, el archivo `ChambaKit_Registros.xlsx` de la copia, que solo se usa desde Code (11/REG-HOJA). Leer y escribir solo en el lugar que dice esta línea.
+- **Dónde:** una URL es la hoja de Google `ChambaKit_Registros`, que necesita Claude y sus conectores de Google; `modo local`, el archivo `ChambaKit_Registros.xlsx` de la copia, que solo se usa desde Code (11/REG-LUGAR). Leer y escribir solo en el lugar que dice esta línea.
 - Pestañas: `vacantes`, `observaciones`, `habilidades_vacante`, `documentos`, `busquedas`, `evaluaciones` e `informes`.
 - **Tabla de una búsqueda:** está en `informes`, calculada desde `vacantes` y `evaluaciones` (en modo local, la calcula la herramienta de 11/REG-LOCAL). Para mostrarla o dar el detalle de una vacante, leer solo las filas necesarias (08/EVAL-INFORME), sin rehacer la búsqueda ni la evaluación.
 - La versión de la hoja que está en el conocimiento del proyecto puede ir atrasada respecto de la hoja real.
@@ -64,7 +64,7 @@ Conversa en español.
 
 ## Escritura de registros
 
-- **En la hoja:** con el conector de Google Sheets de Claude en la hoja de la URL indicada, según 11/REG-HOJA. Leer la pestaña antes y después de escribir. Si el conector falla o no está disponible, entregar las filas separadas por tabulador, en el orden de columnas de la pestaña, indicando la pestaña de destino.
+- **En la hoja:** con el conector de Google Sheets de Claude en la hoja de la URL indicada. Leer la pestaña antes y después de escribir. Si el conector falla o no está disponible, entregar las filas separadas por tabulador, en el orden de columnas de la pestaña, indicando la pestaña de destino.
 - **En modo local:** solo desde Code, con `herramientas/registros.py`, que comprueba cada fila contra el esquema (11/REG-LOCAL).
 - **Valores:** no inventar valores para llenar columnas; una celda vacía significa «no registrado». No cambiar encabezados sin acordarlo en 11.
 - **Pruebas:** marcar los datos sintéticos como tales y borrarlos al terminar.

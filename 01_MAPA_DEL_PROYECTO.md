@@ -1,6 +1,6 @@
 # 01 — Mapa y estado del proyecto
 
-**Versión:** 1.3 — 2026-10-26 — El inventario lista la instantánea (`instantanea/`).
+**Versión:** 1.4 — 2026-10-27 — 11 describe un solo lugar de registros, el archivo.
 
 ## ESTADO — Punto de continuidad
 
@@ -10,17 +10,17 @@
 
 | Módulo | Versión | Estado | Siguiente paso sugerido |
 | --- | --- | --- | --- |
-| 00 Instrucciones | 1.1 | Sin llenar | `/configurar`, paso 8 (Registros): anota dónde viven los registros |
+| 00 Instrucciones | 1.2 | Sin llenar | `/configurar`, paso 8 (Registros): anota dónde viven los registros |
 | 02 Perfil maestro | 1.0 | Sin llenar | `/configurar`, paso 3 (Perfil maestro): extrae la trayectoria del CV actual y entrevista lo que falte |
 | 03 CV base | 1.0 | Sin llenar | `/configurar`, paso 6 (CV base): redacta el CV en español e inglés desde 02 |
 | 04 Preferencias | 1.0 | Sin llenar | `/configurar`, paso 4 (Preferencias): región, modalidad, sueldo y exclusiones |
 | 05 Habilidades y roles | 1.0 | Sin llenar | `/configurar`, paso 5 (Habilidades y roles): matriz de evidencias y familias de roles desde 02 y 04 |
-| 06 Empresas | 1.0 | Sin llenar | `/configurar`, paso 7 (Empresas): fichas de las empresas objetivo |
-| 07 Método de búsqueda | 1.1 | Sin llenar | `/configurar`, paso 7 (Empresas): queda listo con la región de 04 y las fichas de 06 |
-| 08 Evaluación | 1.1 | Sin llenar | `/configurar`, paso 5 (Habilidades y roles): queda listo con las condiciones de 04 y las familias de 05 |
+| 06 Empresas | 1.1 | Sin llenar | `/configurar`, paso 7 (Empresas): fichas de las empresas objetivo |
+| 07 Método de búsqueda | 1.2 | Sin llenar | `/configurar`, paso 7 (Empresas): queda listo con la región de 04 y las fichas de 06 |
+| 08 Evaluación | 1.2 | Sin llenar | `/configurar`, paso 5 (Habilidades y roles): queda listo con las condiciones de 04 y las familias de 05 |
 | 09 Generación de CV | 1.1 | Sin llenar | `/configurar`, paso 6 (CV base): color del CV |
 | 10 Tendencias | 1.0 | Sin llenar | `/configurar`, paso 8 (Registros): queda listo cuando existen los registros |
-| 11 Esquema de registros | 1.2 | Sin llenar | `/configurar`, paso 8 (Registros): crea los registros desde este esquema |
+| 11 Esquema de registros | 1.3 | Sin llenar | `/configurar`, paso 8 (Registros): crea los registros desde este esquema |
 
 **Orden sugerido:**
 
@@ -49,7 +49,7 @@ La numeración no impone orden.
 | 08_EVALUACION_DE_VACANTES.md | Rúbrica, condiciones, antigüedad, flujo, informe y registro de evaluaciones | Método |
 | 09_GENERACION_DE_CV.md | Flujo, CV-SINTESIS, controles, plantilla y color del CV | Procedimiento y diseño de CV |
 | 10_ANALISIS_DE_TENDENCIAS.md | Reglas de tendencias | Método |
-| 11_ESQUEMAS_DE_REGISTROS.md | Esquema de los registros, con su bloque (REG-ESQUEMA), y cómo se crean la hoja y el archivo local | Esquema de datos |
+| 11_ESQUEMAS_DE_REGISTROS.md | Esquema de los registros, con su bloque (REG-ESQUEMA), y cómo se crea y se usa el archivo de registros | Esquema de datos |
 | Registros: hoja de Google `ChambaKit_Registros` o, en modo local, `ChambaKit_Registros.xlsx` (00, «Registros») | Pestañas vacantes, observaciones, habilidades_vacante, documentos, busquedas, evaluaciones e informes; la hoja, vinculada desde Drive | **Datos operativos** |
 | `instantanea/`: `informes.md` y `vacantes.md` | Copia en Markdown de los registros para el canal Web: las últimas 10 búsquedas con su tabla resumen y las vacantes evaluadas no cerradas. La regenera la herramienta de 11/REG-LOCAL con cada escritura; la plantilla no la trae | Vista, nunca se edita a mano (11/REG-INSTANTANEA) |
 

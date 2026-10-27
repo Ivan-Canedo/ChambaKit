@@ -1,6 +1,6 @@
 ---
 name: configurar
-description: Configura paso a paso la copia de ChambaKit del titular y retoma donde quedó según la tabla ESTADO de 01. Úsala cuando el titular acepte configurar su copia, pida retomar la configuración o quiera pasar sus registros del modo local a una hoja de Google.
+description: Configura paso a paso la copia de ChambaKit del titular y retoma donde quedó según la tabla ESTADO de 01. Úsala cuando el titular acepte configurar su copia o pida retomar la configuración.
 ---
 
 # Configurar una copia de ChambaKit
@@ -14,7 +14,7 @@ La hoja de Google y el proyecto web necesitan Claude Code; con otro agente, la c
 ## Cómo avanzar
 
 1. Corre los pasos 1 y 2 en cada invocación: son revisiones rápidas, y el remoto o el equipo pueden haber cambiado desde la última sesión.
-2. Sigue con el primer paso, en el orden de esta skill, que nombre una fila «Sin llenar» de ESTADO. Si no queda ninguna, la configuración está completa. Solo si eres Claude Code, ofrece lo que sigue: si 00 («Registros») tiene la URL de la hoja, el paso 9; si dice `modo local`, pasar los registros a una hoja de Google (paso 8, «De modo local a la hoja»), por si ya conectó Google o quiere hacerlo.
+2. Sigue con el primer paso, en el orden de esta skill, que nombre una fila «Sin llenar» de ESTADO. Si no queda ninguna, la configuración está completa. Solo si eres Claude Code y 00 («Registros») tiene la URL de la hoja, ofrece el paso 9.
 3. Haz un paso por vez. Al terminarlo, marca «Configurado», con su siguiente paso de uso, cada fila de ESTADO que lo nombra: la de cada módulo que el paso escribió y también la de cada módulo de método que solo deja listo, sin editarlo. Cada módulo escrito pasa markdownlint sin advertencias y se versiona según AGENTS.md («Al cerrar»). El paso termina cuando ninguna fila que lo nombra sigue «Sin llenar».
 4. Al terminar un paso, di cuál sigue y pregunta si continuar ahora o en otra sesión.
 5. **Fin de la configuración:** cuando ya no queda ninguna fila «Sin llenar» y el titular terminó o declinó lo que se ofrece en el punto 2, cierra en este orden:
@@ -176,7 +176,7 @@ Llena `06_EMPRESAS_OBJETIVO.md` con las empresas donde el titular quiere buscar,
 
 ## Paso 8: Registros
 
-Crea los registros del titular desde el esquema de `11_ESQUEMAS_DE_REGISTROS.md` (11/REG-HOJA): la hoja de Google `ChambaKit_Registros`, con los conectores de Google de claude.ai, o, si el titular no los conecta, el archivo del modo local. Si una copia en modo local conecta Google después, «De modo local a la hoja» pasa sus registros a una hoja.
+Crea los registros del titular desde el esquema de `11_ESQUEMAS_DE_REGISTROS.md` (11/REG-LUGAR): la hoja de Google `ChambaKit_Registros`, con los conectores de Google de claude.ai, o, si el titular no los conecta, el archivo del modo local.
 
 Si no eres Claude Code, salta los puntos 1 y 2 y sigue directo en «Modo local»: los conectores de claude.ai solo cargan en Claude Code.
 
@@ -215,37 +215,7 @@ Los registros van al archivo `ChambaKit_Registros.xlsx` de la copia, que escribe
    En Debian y Ubuntu, si crear el entorno falla por `ensurepip`, falta el paquete del sistema: `sudo apt install python3-venv`, que corre el titular (paso 2, «Instalación»). El punto termina cuando la comprobación da una versión.
 3. **Crear el archivo:** `.venv/bin/python -I herramientas/registros.py crear` (en Windows, con `.venv\Scripts\python.exe`). Su salida lista las siete pestañas de 11/REG-ESQUEMA; si dice que el archivo ya existe, no lo toques y pregúntale al titular de dónde salió.
 4. **00:** reemplaza el marcador «pendiente…» que sigue a **Registros:** por `modo local`.
-5. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Registrar desde Code con `herramientas/registros.py` (11/REG-LOCAL)» para 00, «Analizar tendencias cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»)» para 11. Si eres Claude Code, dile que, si después conecta Google, `/configurar` pasa sus registros a una hoja («De modo local a la hoja»). La configuración termina aquí, con el cierre de «Cómo avanzar» (punto 5), cuyo commit lleva el archivo nuevo y los módulos editados: el paso 9 es solo para la hoja.
-
-### De modo local a la hoja
-
-Pasa los registros de una copia en modo local a una hoja de Google nueva, cuando el titular ya conectó Google o quiere hacerlo. Necesita Claude Code, por los conectores de claude.ai: con otro agente, dile al titular que abra su copia en Claude Code para este paso. Solo va en este sentido: de la hoja no se vuelve al modo local (11/REG-HOJA).
-
-1. **Antes de empezar:**
-   - **Modo local:** 00 («Registros») debe decir `modo local` y el archivo `ChambaKit_Registros.xlsx` debe existir. Si no existe, detente y pregúntale al titular dónde está; no crees otro.
-   - **Conectores:** revísalos como en el punto 1 del paso 8. Si falta alguno, dale la guía del punto 2 y espera a que vuelva con ellos.
-   - **Aviso:** explícale lo que va a pasar. Sus registros se copian a una hoja nueva de su Drive y se cuentan las filas de cada pestaña en los dos lugares. Solo si todos los conteos coinciden, la copia pasa a la hoja y el archivo sale de la copia, con su última versión guardada en git. Pídele que confirme.
-   - Mientras dure el paso, no se registra nada nuevo.
-2. **Crear la hoja:** sigue los puntos 1 y 2 de «Hoja de Google», que la crean y la comprueban con las filas `PRUEBA-`.
-3. **Exportar:** con el Python del entorno virtual (en Windows, `.venv\Scripts\python.exe`), guarda en `<directorio temporal>` todas las filas del archivo:
-
-   ```sh
-   .venv/bin/python -I herramientas/registros.py exportar --salida <directorio temporal>/exportacion.json
-   ```
-
-   Por pestaña, trae su `rango` en la hoja y sus `filas`, cada una como lista en el orden de las columnas; en `conteos`, cuántas filas tiene cada pestaña. Los valores que la hoja interpretaría ya traen su `'` delante (11/REG-HOJA).
-4. **Copiar:** con el conector de Sheets, escribe las `filas` de cada pestaña en su `rango`, valor por valor como vienen, por rango y no con `append` (11/REG-HOJA). En `informes`, el rango solo cubre los IDs: el resto lo calculan sus fórmulas. Si una pestaña tiene más filas de las que caben, inserta antes las que falten según 11/REG-VALIDACION («Crecimiento»); si es muy grande para una sola llamada, escríbela en tramos consecutivos.
-5. **Comparar los conteos:** en `vacantes`, en la celda de la fila 1 que sigue a su última columna, escribe una fórmula temporal con un `COUNTA` de la columna A, desde la fila 2, por cada pestaña de `conteos` y en su orden: `={COUNTA(vacantes!A2:A),COUNTA(observaciones!A2:A),…}`. Lee las celdas que llena y compáralas con `conteos`. Cuando termines de comparar, aunque te detengas, borra la fórmula.
-   - **Si un conteo no coincide:** borra los valores de esa pestaña de la fila 2 al final, salvo las columnas calculadas de `informes`, vuelve a escribir sus `filas` y cuenta otra vez.
-   - **Si sigue sin coincidir:** detente. Dile al titular qué pestañas no coinciden y por cuántas filas. 00 sigue en `modo local` y el archivo, intacto, sigue siendo su lugar de registros. Pídele permiso para mandar la hoja incompleta a la papelera, para que otro intento empiece con una nueva.
-6. **URL:** con todos los conteos iguales, en 00 reemplaza `modo local`, después de **Registros:**, por la URL de la hoja, en la forma del punto 3 de «Hoja de Google». Dale el enlace al titular.
-7. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00 y 11 toman los siguientes pasos del cierre de «Hoja de Google»; la de 10 no cambia. Después, con su permiso, retira el archivo con commits, para que su historial lo conserve:
-   1. Si `git status --porcelain -- ChambaKit_Registros.xlsx` muestra cambios, primero un commit solo con el archivo, para guardar la versión que se copió.
-   2. `git rm ChambaKit_Registros.xlsx` y un commit con el retiro y los módulos editados. Dile en qué commit quedó la última versión del archivo y, si la copia tiene remoto privado, ofrécele el push.
-
-   Si la carpeta no es un repositorio de git o el titular no quiere los commits, no borres el archivo: dile que la copia ya no lo usa y que puede sacarlo de la carpeta y guardarlo donde quiera.
-
-   En los dos casos, la copia ya usa la hoja: ofrece el paso 9.
+5. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Registrar desde Code con `herramientas/registros.py` (11/REG-LOCAL)» para 00, «Analizar tendencias cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»)» para 11. La configuración termina aquí, con el cierre de «Cómo avanzar» (punto 5), cuyo commit lleva el archivo nuevo y los módulos editados: el paso 9 es solo para la hoja.
 
 ## Paso 9: Proyecto web (opcional)
 
@@ -260,7 +230,7 @@ Le da al titular la lista de lo que hace en claude.ai para usar ChambaKit desde 
    1. **Proyecto:** en claude.ai, abre «Projects» en la barra lateral (<https://claude.ai/projects>) y selecciona «+ New Project». Ponle un nombre, como «ChambaKit». En un plan Team o Enterprise, elige «Keep it private»: el proyecto va a tener sus datos, y una hoja de Drive solo se agrega a un proyecto privado.
    2. **Instrucciones:** selecciona «Set project instructions», pega el contenido completo de `00_INSTRUCCIONES_PROYECTO.md` y guárdalo con «Save instructions». 00 va solo en ese campo: no hace falta subirlo como archivo (01, «Inventario»).
    3. **Módulos:** en la sección de conocimiento del proyecto, con «+» o «Add files», sube los once archivos de su copia, de `01_MAPA_DEL_PROYECTO.md` a `11_ESQUEMAS_DE_REGISTROS.md`. Nada más: lo de 01, «Fuera del proyecto», se queda en la copia.
-   4. **Hoja:** en el mismo lugar, «Add files» → «Google Drive», y pega la URL de la hoja o busca `ChambaKit_Registros`. El conector de Google Drive, con el que el paso 8 creó la hoja, ya le da acceso. El proyecto la recibe como CSV, con todas sus pestañas, y la refresca desde Drive de vez en cuando al abrirlo (11/REG-HOJA).
+   4. **Hoja:** en el mismo lugar, «Add files» → «Google Drive», y pega la URL de la hoja o busca `ChambaKit_Registros`. El conector de Google Drive, con el que el paso 8 creó la hoja, ya le da acceso. El proyecto la recibe como CSV, con todas sus pestañas, y la refresca desde Drive de vez en cuando al abrirlo.
    5. **Conector en cada chat:** al abrir un chat del proyecto, revisa en «+» → «Connectors» que «Google Sheets» esté encendido: con él Claude lee el estado actual de la hoja y escribe los registros (00, «Escritura de registros»). El interruptor vale solo para ese chat.
    6. **Prueba:** en un chat nuevo del proyecto, con «Google Sheets» encendido, pide: «Lee la tabla ESTADO de 01 y, con el conector de Google Sheets, dime los encabezados de la pestaña `vacantes` de la hoja de registros». La respuesta debe traer la tabla de 01 y los encabezados leídos con el conector, sin pedir archivos. Si Claude pide permiso para usar el conector, «Allow once» o «Always allow».
 3. **Si algo falla:** ayúdale según lo que vea, y después repite la prueba:

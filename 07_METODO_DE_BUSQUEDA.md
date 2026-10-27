@@ -1,6 +1,6 @@
 # 07 — Método de búsqueda
 
-**Versión:** 1.1 — 2026-10-18 — El canal Code es cualquier agente con terminal sobre la copia; el canal Web y la hoja necesitan Claude.
+**Versión:** 1.2 — 2026-10-27 — Sale la columna `canal` de `busquedas` (11/REG-CAMPOS).
 **Estado:** método de la plantilla. Queda listo con la región de 04 y las fichas de 06, en el paso 7 de `/configurar` (Empresas).
 
 ## BUS-ALCANCE — Responsabilidad
@@ -133,13 +133,13 @@ Un agregador nunca basta para «Confirmada abierta». Una vacante vista solo en 
 
 ## BUS-REGISTRO — Escritura en los registros
 
-**En la hoja,** se escribe con el conector de Google Sheets, leyendo cada pestaña antes y después (00 y 11). Orden: `busquedas` → `vacantes` → `observaciones` → actualización de `vacantes` → `habilidades_vacante` → `evaluaciones` → `informes`. Cada pestaña se escribe en un solo bloque. Si el bloque es demasiado grande para una llamada del conector, se escribe en tramos consecutivos del mismo rango, sin escribir otra pestaña entre ellos, y después se lee el bloque completo para compararlo. Si la pestaña no tiene filas suficientes, se insertan antes dentro del rango validado (11/REG-VALIDACION). Si el conector falla, las filas se entregan separadas por tabulador, después de la tabla resumen.
+**En la hoja,** se escribe con el conector de Google Sheets, leyendo cada pestaña antes y después (00 y 11). Orden: `busquedas` → `vacantes` → `observaciones` → actualización de `vacantes` → `habilidades_vacante` → `evaluaciones` → `informes`. Cada pestaña se escribe en un solo bloque. Si el bloque es demasiado grande para una llamada del conector, se escribe en tramos consecutivos del mismo rango, sin escribir otra pestaña entre ellos, y después se lee el bloque completo para compararlo. Si la pestaña no tiene filas suficientes, se insertan antes dentro del rango validado. Si el conector falla, las filas se entregan separadas por tabulador, después de la tabla resumen.
 
 **En modo local,** con `herramientas/registros.py` (11/REG-LOCAL), en dos llamadas: `agregar` con todas las filas nuevas de la búsqueda, de todas las pestañas, y después `actualizar` con los cambios a las vacantes ya registradas. Si la herramienta rechaza una fila, no escribe ninguna: se corrigen las filas y se repite la llamada. Al final, `informe` con el `busqueda_id` da la tabla resumen, que no debe tener `#N/A` y es la que se entrega.
 
 | Pestaña | Qué se escribe |
 | --- | --- |
-| `busquedas` | Una fila por ejecución. `fecha_hora` con la hora si se conoce. `recursos_versiones`: versiones del paso 2. `fuentes_consultas_filtros`: las URL o formas usadas, con orden y filtros. `cobertura_limitaciones`: «N únicos de T, completa/incompleta; detalle M de K relacionadas»; si la fuente no publica total, «N únicos, sin total publicado; <comprobación>; detalle M de K». `no_revisado_pendientes` y `comparacion_anterior` según BUS-COBERTURA; desde Web, las empresas «Solo Code» van en `no_revisado_pendientes`. `canal`: `Code` o `Web`. En Code, `fuentes_consultas_filtros` empieza con la versión del script |
+| `busquedas` | Una fila por ejecución. `fecha_hora` con la hora si se conoce. `recursos_versiones`: versiones del paso 2. `fuentes_consultas_filtros`: las URL o formas usadas, con orden y filtros. `cobertura_limitaciones`: «N únicos de T, completa/incompleta; detalle M de K relacionadas»; si la fuente no publica total, «N únicos, sin total publicado; <comprobación>; detalle M de K». `no_revisado_pendientes` y `comparacion_anterior` según BUS-COBERTURA; desde Web, las empresas «Solo Code» van en `no_revisado_pendientes`. En Code, `fuentes_consultas_filtros` empieza con la versión del script |
 | `vacantes` | Una fila por cada vacante listada que no exista: campos según el mapeo de la ficha (06), `primera_deteccion` = fecha de la búsqueda. En las ya registradas, actualizar los campos que cambiaron y `ultima_observacion_id` |
 | `observaciones` | Una fila por vacante listada y por cada registrada no observada que se comprobó (paso 7). Si se leyó el detalle, la observación usa esa evidencia y su URL; si no, la del listado. `tipo_fuente`: `Oficial`. En Code, `fecha_verificacion` va sin hora: la del script es la de inicio, no la de cada lectura |
 | `habilidades_vacante` | Solo vacantes relacionadas con detalle leído y no excluidas por «Tipo de puesto» (BUS-REGLAS), una fila por requisito con su tipo (08/EVAL-REQUISITOS). Si el conjunto no cambió respecto de lo registrado, no se agregan filas (11/REG-IDENTIDAD) |

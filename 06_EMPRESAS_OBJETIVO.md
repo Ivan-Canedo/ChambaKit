@@ -1,6 +1,6 @@
 # 06 — Empresas objetivo y fichas
 
-**Versión:** 1.0 — 2026-10-17 — Plantilla inicial.
+**Versión:** 1.1 — 2026-10-27 — Dar de alta una empresa ya no toca los registros: la herramienta lee el catálogo.
 **Estado:** plantilla sin empresas. Las agrega el paso 7 de `/configurar` (Empresas), cada una con su ficha y la configuración de su plataforma de reclutamiento.
 
 ## CAT-EMPRESAS — Catálogo
@@ -14,7 +14,7 @@ El script de búsqueda (07/BUS-ACCESO-CODE) toma los IDs de esta tabla: sin argu
 
 ## CAT-REGLAS — Mantenimiento
 
-- **Una empresa = una fila + una ficha** `## EMP-<ID> — <Nombre>` en este archivo. Al agregar una: asignar un ID nuevo, sin reutilizar (`EMP-` más un nombre corto en mayúsculas, con letras sin acentos, dígitos y guiones); añadir la fila y escribir la ficha según FICHA-PLANTILLA, dejando como pendiente lo no comprobado. Si ya existe la hoja de registros, agregar su ID a la lista de `empresa_id` (11/REG-VALIDACION).
+- **Una empresa = una fila + una ficha** `## EMP-<ID> — <Nombre>` en este archivo. Al agregar una: asignar un ID nuevo, sin reutilizar (`EMP-` más un nombre corto en mayúsculas, con letras sin acentos, dígitos y guiones); añadir la fila y escribir la ficha según FICHA-PLANTILLA, dejando como pendiente lo no comprobado. La herramienta de registros lee el catálogo, así que el ID vale para `empresa_id` desde que está aquí (11/REG-CAMPOS).
 - **Estado:** «Objetivo» para las que el titular quiere seguir; «Explorada» para una que se conserva solo porque tiene vacantes registradas. Las dos se buscan por defecto, así que una explorada también lleva su configuración.
 - **Plataforma:** identificar la plataforma de reclutamiento del portal oficial (CAT-PLATAFORMAS dice cómo se reconoce cada una). Si el script tiene su adaptador, basta el bloque de configuración de la ficha. Si no lo tiene, o el portal es un sitio propio, buscar la API que usa el portal y revisar su `robots.txt` antes de construir un adaptador en `herramientas/buscar.py` de esta copia; después, describir su configuración en CAT-PLATAFORMAS. Sin una ruta que el `robots.txt` permita, la empresa no entra al catálogo.
 - **Canal (07/BUS-CANALES):** «Web y Code» si el listado y el detalle se leen con GET; «Solo Code» si el listado exige POST o navegador, o si el texto visible no trae los campos del mapeo (07/BUS-ACCESO-WEB).

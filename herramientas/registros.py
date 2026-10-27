@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ChambaKit: registros en el archivo local de la copia (modo local, 11/REG-LOCAL).
+"""ChambaKit: el archivo de registros de la copia (11/REG-LOCAL).
 
 Uso, con el Python del entorno virtual de la copia (en Windows, .venv\\Scripts\\python.exe):
     .venv/bin/python -I herramientas/registros.py crear
@@ -8,9 +8,8 @@ Uso, con el Python del entorno virtual de la copia (en Windows, .venv\\Scripts\\
     .venv/bin/python -I herramientas/registros.py leer PESTAÑA [--id ID ...] [--columna COLUMNA]
     .venv/bin/python -I herramientas/registros.py informe BUS-ID
     .venv/bin/python -I herramientas/registros.py instantanea
-    .venv/bin/python -I herramientas/registros.py exportar [--salida ARCHIVO.json]
 
-El archivo es <hoja.nombre>.xlsx en la raíz de la copia, con las pestañas del bloque de 11/REG-ESQUEMA y
+El archivo es <archivo.nombre>.xlsx en la raíz de la copia, con las pestañas del bloque de 11/REG-ESQUEMA y
 sus columnas guardadas: las calculadas de informes no se guardan, las da la orden informe.
 
 - crear: el archivo vacío, con los encabezados. No sobrescribe uno que ya exista.
@@ -20,22 +19,18 @@ sus columnas guardadas: las calculadas de informes no se guardan, las da la orde
 - actualizar: columnas de filas ya registradas, {pestaña: [{columna_id: ID, columna: texto nuevo}]}. El
   ID no cambia; el texto vacío borra el valor.
 - leer: las filas de una pestaña, o solo las que tienen esos IDs en la primera columna o en --columna.
-- informe: la tabla resumen de una búsqueda (08/EVAL-INFORME), con las columnas calculadas como las
-  darían las fórmulas de informes hoy, en la zona horaria de 04.
+- informe: la tabla resumen de una búsqueda (08/EVAL-INFORME), con las columnas calculadas de informes
+  (11/REG-CAMPOS) a la fecha de hoy en la zona horaria de 04 y con el umbral de «antigua» de 08/EVAL-ACUERDOS.
 - instantanea: regenera completa la instantánea que lee el canal Web (11/REG-INSTANTANEA), en instantanea/:
   informes.md, con las últimas 10 búsquedas y su tabla resumen, y vacantes.md, con una sección por vacante
   evaluada cuya última observación no es Cerrada. Agregar y actualizar la regeneran después de escribir. Si
   pasa de 300 KB, lo avisa en stderr sin fallar.
-- exportar: todas las pestañas, para pasarlas a la hoja de Google (`/configurar`, «De modo local a la
-  hoja»): las filas de cada una como listas en el orden de sus columnas, el rango de la hoja donde van y
-  cuántas son. Un valor que empieza con «=», «+» o «'» lleva un apóstrofo delante, para que la hoja no lo
-  interprete (11/REG-HOJA). Va a --salida o a stdout, con cada fila en su propia línea.
 
-Agregar y actualizar comprueban cada fila que escriben contra el esquema, como la hoja: tipos, listas
+Agregar y actualizar comprueban cada fila que escriben contra el esquema: tipos, listas
 (empresa_id, contra 06/CAT-EMPRESAS), obligatoriedad, IDs únicos y referencias. Con un solo error no
 escriben nada: dicen todos en stderr y terminan con código 1. El JSON va a stdout. Si falta la
-configuración, el archivo u openpyxl, se pide una pestaña o búsqueda inexistente o no se puede escribir
---salida, termina con código 2 y dice qué falla.
+configuración, el archivo u openpyxl, o se pide una pestaña o búsqueda inexistente, termina con código 2
+y dice qué falla.
 """
 import argparse
 import datetime as dt
@@ -48,15 +43,16 @@ from zoneinfo import ZoneInfo
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODULO_04 = os.path.join(RAIZ, "04_PREFERENCIAS_LABORALES.md")
 MODULO_06 = os.path.join(RAIZ, "06_EMPRESAS_OBJETIVO.md")
+MODULO_08 = os.path.join(RAIZ, "08_EVALUACION_DE_VACANTES.md")
 MODULO_11 = os.path.join(RAIZ, "11_ESQUEMAS_DE_REGISTROS.md")
 CARPETA_INSTANTANEA = "instantanea"
 ULTIMAS_BUSQUEDAS = 10
 AVISO_INSTANTANEA_KB = 300
+UMBRAL_DE_ANTIGUA = 20
 
 
 def error(mensaje):
-    """Configuración, archivo o biblioteca que falta, o salida que no se puede escribir: termina con código 2
-    sin tocar el archivo."""
+    """Configuración, archivo o biblioteca que falta: termina con código 2 sin tocar el archivo."""
     print(mensaje, file=sys.stderr)
     sys.exit(2)
 
@@ -91,9 +87,9 @@ def leer_esquema():
         esquema = json.loads(bloque)
     except ValueError as e:
         error(f"{ruta}: el bloque de REG-ESQUEMA no es JSON válido ({e}).")
-    if not (isinstance(esquema, dict) and isinstance(esquema.get("hoja"), dict)
-            and isinstance(esquema["hoja"].get("nombre"), str) and isinstance(esquema.get("pestanas"), list)):
-        error(f"{ruta}, REG-ESQUEMA: el bloque debe ser un objeto con hoja.nombre y pestanas.")
+    if not (isinstance(esquema, dict) and isinstance(esquema.get("archivo"), dict)
+            and isinstance(esquema["archivo"].get("nombre"), str) and isinstance(esquema.get("pestanas"), list)):
+        error(f"{ruta}, REG-ESQUEMA: el bloque debe ser un objeto con archivo.nombre y pestanas.")
     return esquema
 
 
@@ -131,7 +127,7 @@ def biblioteca_xlsx():
 
 
 def ruta_archivo(esquema):
-    return os.path.join(RAIZ, esquema["hoja"]["nombre"] + ".xlsx")
+    return os.path.join(RAIZ, esquema["archivo"]["nombre"] + ".xlsx")
 
 
 def crear(esquema):
@@ -172,7 +168,7 @@ def abrir(esquema):
 
 def escribir(celda, valor):
     """Un valor como texto. openpyxl tomaría por fórmula un texto que empieza con «=», como uno copiado de un
-    anuncio, y la hoja de cálculo lo evaluaría al abrir el archivo."""
+    anuncio, y una hoja de cálculo lo evaluaría al abrir el archivo."""
     celda.value, celda.number_format = valor or None, "@"
     if valor:
         celda.data_type = "s"
@@ -396,17 +392,22 @@ def leer_zona_horaria():
               "`.venv\\Scripts\\python.exe -m pip install tzdata`).")
 
 
-def umbral_de_antigua(esquema):
-    """Los días de la marca «antigua» (08/EVAL-ACUERDOS), tal como los usa la fórmula de antiguedad."""
-    for c in pestana_del_esquema(esquema, "informes")["columnas"]:
-        m = c["nombre"] == "antiguedad" and re.search(r"n>=(\d+)", c.get("formula", ""))
-        if m:
-            return int(m.group(1))
-    error(f"{MODULO_11}, REG-ESQUEMA: no se encontró el umbral «n>=N» en la fórmula de antiguedad de informes.")
+def umbral_de_antigua():
+    """Los días de la marca «antigua», de su línea en 08/EVAL-ACUERDOS; sin esa línea, los 20 por defecto."""
+    ruta = MODULO_08
+    acuerdos = seccion(leer_modulo(ruta, "el umbral de «antigua»"), "EVAL-ACUERDOS") or ""
+    linea = re.search(r"^- \*\*Marca «antigua»:\*\*.*$", acuerdos, re.M)
+    if linea is None:
+        return UMBRAL_DE_ANTIGUA
+    dias = re.search(r"a partir de \**(\d+)\**\s+días?\b", linea.group(0))
+    if dias is None:
+        error(f"{ruta}, EVAL-ACUERDOS: la línea «Marca «antigua»» debe decir «a partir de N días», con N en "
+              "cifras; dice: " + linea.group(0))
+    return int(dias.group(1))
 
 
 def antiguedad(vacante, hoy, umbral):
-    """08/EVAL-ANTIGUEDAD como la fórmula: «N d» desde la más antigua entre fecha_publicacion y
+    """08/EVAL-ANTIGUEDAD: «N d» desde la más antigua entre fecha_publicacion y
     primera_deteccion; «≥ N d» si solo hay primera_deteccion; «—» si además se detectó hoy."""
     publicada, detectada = vacante["fecha_publicacion"], vacante["primera_deteccion"]
     try:
@@ -427,7 +428,7 @@ def encaje(evaluacion):
 
 def alertas(evaluacion):
     """Si está excluida, su detalle; si no, los núcleos insuficientes y académicos y los pendientes poco
-    habituales, como la fórmula de alertas (08/EVAL-INFORME)."""
+    habituales (08/EVAL-INFORME)."""
     detalle = evaluacion["condiciones_detalle"]
     if evaluacion["condiciones"] == "Excluida":
         return "Excluida: " + detalle.replace(" | ", "; ")
@@ -446,15 +447,15 @@ def alertas(evaluacion):
 
 
 def calculadas(vacante, evaluacion, hoy, umbral):
-    """Las columnas calculadas de una fila de informes, con la lógica de sus fórmulas en 11/REG-ESQUEMA: lo
-    mismo que mostraría la hoja, incluido #N/A si su vacante o su evaluación no existen."""
+    """Las columnas calculadas de una fila de informes, como las describe 11/REG-CAMPOS, con #N/A si su vacante
+    o su evaluación no existen."""
     if vacante is None:
         de_la_vacante = dict.fromkeys(("empresa", "vacante", "antiguedad", "url_oficial"), "#N/A")
     else:
         job_id = vacante["job_id"]
         de_la_vacante = {
             "empresa": vacante["empresa_id"].replace("EMP-", ""),
-            # Como la fórmula: en Sheets, «=» compara texto sin distinguir mayúsculas.
+            # «No publicado» sin distinguir mayúsculas.
             "vacante": ("sin Job ID" if job_id.casefold() in ("", "no publicado") else job_id) + " — "
                        + vacante["titulo"],
             "antiguedad": antiguedad(vacante, hoy, umbral),
@@ -467,7 +468,7 @@ def calculadas(vacante, evaluacion, hoy, umbral):
 
 
 def primeras(filas, columna):
-    """{ID: fila}, con la primera fila de cada ID, como la búsqueda por ID de las fórmulas."""
+    """{ID: fila}, con la primera fila de cada ID."""
     por_id = {}
     for f in filas:
         por_id.setdefault(f[columna], f)
@@ -489,12 +490,12 @@ def tabla_resumen(esquema, filas, busqueda_id, hoy, umbral):
 
 def informe(esquema, busqueda_id):
     """La tabla resumen de una búsqueda (08/EVAL-INFORME): sus filas de informes, en su orden, con las
-    columnas calculadas como las daría la hoja hoy."""
+    columnas calculadas a la fecha de hoy."""
     filas = abrir(esquema)[1]
     if not any(f["busqueda_id"] == busqueda_id for f in filas["busquedas"]):
         error(f"{busqueda_id} no existe en busquedas.")
     hoy = dt.datetime.now(leer_zona_horaria()).date()
-    return tabla_resumen(esquema, filas, busqueda_id, hoy, umbral_de_antigua(esquema))
+    return tabla_resumen(esquema, filas, busqueda_id, hoy, umbral_de_antigua())
 
 
 def codificar(url, signos):
@@ -596,9 +597,9 @@ def instantanea(esquema, filas):
     """Las dos vistas de la instantánea (11/REG-INSTANTANEA), {archivo: texto}, desde todas las filas. Se arman
     antes de guardar el archivo de registros: si falta lo que piden, como la zona horaria de 04, no se escribe nada."""
     ahora = dt.datetime.now(leer_zona_horaria())
-    umbral = umbral_de_antigua(esquema)
+    umbral = umbral_de_antigua()
     encabezado = (f"**Exportada:** {ahora:%Y-%m-%d %H:%M} ({ahora.tzinfo.key}), desde "
-                  f"`{esquema['hoja']['nombre']}.xlsx`. La antigüedad está calculada a esa fecha; las demás fechas "
+                  f"`{esquema['archivo']['nombre']}.xlsx`. La antigüedad está calculada a esa fecha; las demás fechas "
                   "son las de los registros. Se regenera completa con cada escritura y no se edita a mano "
                   "(11/REG-INSTANTANEA).")
     return {"informes.md": vista_informes(esquema, filas, encabezado, ahora.date(), umbral),
@@ -628,50 +629,6 @@ def guardar_instantanea(vistas):
     return {"archivos": tamanos}
 
 
-def letra(n):
-    """La letra de la columna n de la hoja: 1 es A, 27 es AA."""
-    letras = ""
-    while n:
-        n, resto = divmod(n - 1, 26)
-        letras = chr(ord("A") + resto) + letras
-    return letras
-
-
-def para_la_hoja(valor):
-    """El valor como debe escribirlo el conector para que la hoja lo guarde tal cual: con un apóstrofo delante si
-    empieza con «=», «+» o «'» (11/REG-HOJA, «Valores que la hoja interpretaría»)."""
-    return "'" + valor if valor.startswith(("=", "+", "'")) else valor
-
-
-def exportar(esquema):
-    """Todas las filas, para pasarlas a la hoja (`/configurar`, «De modo local a la hoja»): cada pestaña con sus
-    filas como listas en el orden de sus columnas, listas para el conector, el rango de la hoja donde van, desde la
-    fila 2, y cuántas son."""
-    registradas = abrir(esquema)[1]
-    pestanas = {}
-    for p in esquema["pestanas"]:
-        columnas = encabezados(p)
-        filas = [[para_la_hoja(f[c]) for c in columnas] for f in registradas[p["nombre"]]]
-        rango = f"{p['nombre']}!A2:{letra(len(columnas))}{len(filas) + 1}" if filas else None
-        pestanas[p["nombre"]] = {"rango": rango, "filas": filas}
-    return {"conteos": {nombre: len(exportada["filas"]) for nombre, exportada in pestanas.items()},
-            "pestanas": pestanas}
-
-
-def json_por_filas(valor, nivel=0):
-    """JSON con sangría en el que cada lista de valores sueltos, como una fila, ocupa una sola línea: se lee y se
-    copia fila por fila."""
-    if isinstance(valor, dict) and valor:
-        elementos = [f"{json.dumps(k, ensure_ascii=False)}: {json_por_filas(v, nivel + 1)}" for k, v in valor.items()]
-    elif isinstance(valor, list) and any(isinstance(v, (dict, list)) for v in valor):
-        elementos = [json_por_filas(v, nivel + 1) for v in valor]
-    else:
-        return json.dumps(valor, ensure_ascii=False)
-    abre, cierra = "{}" if isinstance(valor, dict) else "[]"
-    sangria = " " * (nivel + 1)
-    return abre + "\n" + ",\n".join(sangria + e for e in elementos) + "\n" + " " * nivel + cierra
-
-
 def leer(esquema, nombre, ids, columna):
     p = pestana_del_esquema(esquema, nombre)
     columna = columna or clave(p)["nombre"]
@@ -698,8 +655,6 @@ def main():
     o.add_argument("--id", nargs="+", default=[], help="solo las filas con alguno de estos IDs")
     o.add_argument("--columna", help="columna donde se buscan los IDs (por defecto, la primera)")
     ordenes.add_parser("instantanea", help="regenera la instantánea completa que lee el canal Web")
-    o = ordenes.add_parser("exportar", help="todas las pestañas, fila por fila, para pasarlas a la hoja")
-    o.add_argument("--salida", metavar="ARCHIVO.json", help="archivo JSON de salida (por defecto, stdout)")
     a = ap.parse_args()
     esquema = leer_esquema()
     if a.orden == "crear":
@@ -712,20 +667,9 @@ def main():
         res = informe(esquema, a.busqueda_id)
     elif a.orden == "instantanea":
         res = guardar_instantanea(instantanea(esquema, abrir(esquema)[1]))
-    elif a.orden == "exportar":
-        res = exportar(esquema)
     else:
         res = leer(esquema, a.pestana, a.id, a.columna)
-    if a.orden != "exportar":
-        print(json.dumps(res, ensure_ascii=False, indent=1))
-    elif a.salida:
-        try:
-            with open(a.salida, "w", encoding="utf-8") as f:
-                f.write(json_por_filas(res) + "\n")
-        except OSError as e:
-            error(f"{a.salida}: no se pudo escribir la exportación ({e.strerror}).")
-    else:
-        print(json_por_filas(res))
+    print(json.dumps(res, ensure_ascii=False, indent=1))
 
 
 if __name__ == "__main__":

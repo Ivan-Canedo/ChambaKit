@@ -1,30 +1,17 @@
 # 11 — Esquema de registros
 
-**Versión:** 1.2 — 2026-10-26 — La herramienta del archivo local regenera la instantánea con cada escritura (REG-INSTANTANEA).
-**Estado:** esquema de la plantilla. El paso 8 de `/configurar` (Registros) crea la hoja o el archivo local desde el bloque de REG-ESQUEMA.
+**Versión:** 1.3 — 2026-10-27 — Un solo lugar, el archivo de registros (REG-LUGAR); salen REG-VALIDACION, las fórmulas del bloque y `canal`.
+**Estado:** esquema de la plantilla. El paso 8 de `/configurar` (Registros) crea el archivo de registros desde el bloque de REG-ESQUEMA.
 
 ## Responsabilidad
 
-Definir campos, relaciones, autoridades y versionado de los datos de búsquedas, vacantes, observaciones, habilidades, evaluaciones, informes y documentos, y cómo se crean y comprueban la hoja o el archivo local que los guardan.
+Definir campos, relaciones, autoridades y versionado de los datos de búsquedas, vacantes, observaciones, habilidades, evaluaciones, informes y documentos, y cómo se crea y se usa el archivo de registros que los guarda.
 
-## REG-HOJA — Dónde viven los registros
+## REG-LUGAR — Dónde viven los registros
 
-**En uno de dos lugares, con el mismo esquema (REG-ESQUEMA):**
+**En un solo lugar:** el archivo de registros, `ChambaKit_Registros.xlsx` en la raíz de la copia, con una pestaña por tabla y el esquema de REG-ESQUEMA. Lo crea el paso 8 de `/configurar` y solo se escribe desde el canal Code, con su herramienta (REG-LOCAL). No hay otro lugar ni cambio de lugar.
 
-- **Hoja de Google `ChambaKit_Registros`**, con una pestaña por tabla. La crea el paso 8 de `/configurar` desde REG-ESQUEMA, según REG-VALIDACION. Necesita Claude, que la usa con sus conectores de Google. Sirve a los canales Code y Web.
-- **Modo local:** el archivo `ChambaKit_Registros.xlsx` de la copia, cuando el titular no conecta Google (REG-LOCAL). Solo sirve al canal Code.
-
-**Cuál usa la copia:** lo dice 00 («Registros»): una URL es la hoja; `modo local`, el archivo; «pendiente», todavía no hay registros. El agente lee y escribe solo en ese lugar.
-
-**Cambio de lugar:** del modo local a la hoja, nunca al revés. Lo hace `/configurar` (paso 8, «De modo local a la hoja») cuando el titular conecta Google: copia las filas a una hoja nueva, compara los conteos de cada pestaña y, si coinciden, retira el archivo, cuya historia queda en git.
-
-**En la hoja:**
-
-- **Lectura:** en el proyecto web, la hoja está vinculada al conocimiento del proyecto desde Drive. Claude la recibe como CSV con todas las pestañas y Drive la refresca periódicamente al abrir el proyecto. Dentro de un chat, y siempre en Code, el estado actual se lee con el conector.
-- **Escritura:** Claude escribe con el conector de Google Sheets, por rango, en las filas que siguen a la última ocupada; el conector, al agregar (`append`), inserta una fila nueva en lugar de ocupar una vacía. Si el conector no está disponible o falla, Claude entrega las filas listas para pegar, separadas por tabulador y con el orden de columnas de la pestaña, e indica a qué pestaña van.
-- **La validación no detiene al conector:** escribe sin error un valor inválido, que la hoja solo marca. Por eso Claude comprueba cada valor contra este esquema antes de escribir y lee la pestaña después.
-- **Valores que la hoja interpretaría:** el conector escribe como si se tecleara, aun en celdas con formato de texto: un valor que empieza con `=` o `+` se vuelve fórmula, y un apóstrofo inicial desaparece. Esos valores se escriben con un `'` delante, que la hoja no guarda.
-- **Historial:** el historial de versiones de Google Sheets reemplaza al control de cambios manual.
+**Canal Web:** no lee el archivo, sino la instantánea (REG-INSTANTANEA), que la herramienta regenera con cada escritura.
 
 ## REG-CONVENCIONES — Reglas comunes
 
@@ -32,9 +19,9 @@ Definir campos, relaciones, autoridades y versionado de los datos de búsquedas,
 
 - **ID:** prefijo y número consecutivo (tabla de abajo).
 - **Texto.** Cuando la columna dice «literal», se copia tal cual de la fuente, sin traducir ni normalizar.
-- **Fecha:** texto ISO `AAAA-MM-DD`; donde se indica, se admite la hora: `AAAA-MM-DD HH:MM`. Se guarda como texto porque un valor de fecha no puede tener hora opcional: mostraría un 00:00 falso o escondería una hora real. Además, el CSV del conocimiento recibe exactamente lo escrito. Se ordena bien alfabéticamente y la validación comprueba que sea una fecha real.
-- **URL.**
-- **Lista cerrada:** desplegable que rechaza cualquier otro valor.
+- **Fecha:** texto ISO `AAAA-MM-DD`; donde se indica, se admite la hora: `AAAA-MM-DD HH:MM`. Se guarda como texto porque un valor de fecha no puede tener hora opcional: mostraría un 00:00 falso o escondería una hora real. Se ordena bien alfabéticamente y la herramienta comprueba que sea una fecha real.
+- **URL:** empieza con `http://` o `https://` y no tiene espacios.
+- **Lista cerrada:** solo admite sus valores.
 - **Multivalor:** elementos separados por ` | `. Se usa la barra porque las ubicaciones ya llevan comas.
 
 **Obligatoriedad:** **Sí** (siempre), **Si existe** (cuando la fuente lo ofrece o el caso lo tiene) y **No** (opcional).
@@ -53,14 +40,14 @@ Definir campos, relaciones, autoridades y versionado de los datos de búsquedas,
 - Antes de escribir, leer la pestaña y tomar el número siguiente al mayor. Los IDs no se reutilizan ni se renumeran.
 - Los datos sintéticos llevan `PRUEBA-` delante (p. ej. `PRUEBA-VAC-0001`) y se borran al terminar.
 
-**Fechas y zona horaria:** en la zona horaria de 04 (`zona_horaria` del bloque de PREF-UBICACION), que también es la de la hoja. La hora solo se registra si se conoce: en claude.ai no hay garantía de conocerla y no se infiere. Las comprobaciones del mismo día se ordenan por ID.
+**Fechas y zona horaria:** en la zona horaria de 04 (`zona_horaria` del bloque de PREF-UBICACION). La hora solo se registra si se conoce: en claude.ai no hay garantía de conocerla y no se infiere. Las comprobaciones del mismo día se ordenan por ID.
 
 **Nulos:** una celda vacía significa «no registrado». Hay dos valores explícitos:
 
 - `No publicado`: se comprobó que la fuente no da el dato. Solo en `job_id`, `ubicacion_literal` y `modalidad_literal`.
 - `Ninguno`: no hay nada que reportar. Solo en `busquedas` y en `evaluaciones.condiciones_detalle`.
 
-**Formato de texto:** todas las celdas de datos usan el formato de texto de Sheets, y en el archivo local se escriben como texto. Así `1.10` no se convierte en 1.1, un Job ID numérico no pierde ceros y las fechas no cambian de forma. Ninguna columna lleva números ni fórmulas, salvo las calculadas de `informes`, que es una vista y no guarda datos propios.
+**Formato de texto:** todas las celdas de datos se escriben como texto. Así `1.10` no se convierte en 1.1, un Job ID numérico no pierde ceros y las fechas no cambian de forma. Ninguna columna lleva números ni fórmulas, y las calculadas de `informes` no se guardan.
 
 **Ubicaciones múltiples:** una fila por requisición, no por sede. `ubicacion_literal` las anota en el orden de la fuente y `region_relacionada` resume el conjunto.
 
@@ -72,7 +59,7 @@ Definir campos, relaciones, autoridades y versionado de los datos de búsquedas,
 | `observaciones` | Comprobación fechada de una vacante | observacion_id, vacante_id, busqueda_id, fecha_verificacion, estado_vigencia, motivo, url_fuente, tipo_fuente |
 | `habilidades_vacante` | Habilidad o requisito en una descripción observada | habilidad_observacion_id, vacante_id, observacion_id, habilidad_literal, habilidad_normalizada, tipo_requisito |
 | `documentos` | Un archivo generado | documento_id, vacante_id, fecha_generacion, version_perfil, version_cv_base, idioma, formato, archivo, revision_visual, texto_extraible, notas |
-| `busquedas` | Ejecución de una búsqueda o comprobación | busqueda_id, fecha_hora, solicitud_alcance, recursos_versiones, fuentes_consultas_filtros, cobertura_limitaciones, no_revisado_pendientes, comparacion_anterior, canal |
+| `busquedas` | Ejecución de una búsqueda o comprobación | busqueda_id, fecha_hora, solicitud_alcance, recursos_versiones, fuentes_consultas_filtros, cobertura_limitaciones, no_revisado_pendientes, comparacion_anterior |
 | `evaluaciones` | Evaluación de una vacante con una descripción observada | evaluacion_id, vacante_id, observacion_id, fecha_evaluacion, version_perfil, version_evaluacion, condiciones, condiciones_detalle, encaje, cobertura, nucleos |
 | `informes` | Vacante evaluada en la tabla resumen de una búsqueda | busqueda_id, vacante_id, evaluacion_id, empresa, vacante, encaje, antiguedad, alertas, url_oficial |
 
@@ -102,7 +89,7 @@ Las tablas de cada pestaña explican sus columnas; el bloque de REG-ESQUEMA las 
 - **Fuera:** ninguna está dentro ni puede estarlo.
 - **Indeterminada:** ninguna está dentro, pero alguna puede estarlo, porque nombra una división de 04 sin una localidad aceptada, solo el país o nada más concreto que «Remote» o «Multiple locations»; o la ubicación no está publicada.
 
-**Empresa:** para registrar una vacante, su empresa necesita un EMP-ID en 06, aunque solo esté como «explorada». Al agregar un ID en 06, se agrega también a la lista de `empresa_id` en la hoja (REG-VALIDACION); en modo local no hace falta, porque la herramienta lee el catálogo de 06.
+**Empresa:** para registrar una vacante, su empresa necesita un EMP-ID en 06, aunque solo esté como «explorada». La herramienta lee el catálogo de 06, así que el ID vale desde que se agrega ahí.
 
 ### `observaciones`
 
@@ -188,11 +175,10 @@ La observación es la evidencia fechada (REG-DECISIONES). La evidencia mínima d
 | cobertura_limitaciones | Texto | Sí | Páginas revisadas, totales mostrados y límites |
 | no_revisado_pendientes | Texto | Sí | `Ninguno` si no queda nada |
 | comparacion_anterior | Texto | Sí | `Sin búsqueda comparable` la primera vez. «No observada esta vez» no significa «cerrada» |
-| canal | Lista cerrada | Sí | `Code` / `Web`: dónde se ejecutó (07/BUS-CANALES). Permite encontrar la última búsqueda en Code de una empresa «Solo Code» |
 
 ### `informes`
 
-La tabla resumen de cada búsqueda (08/EVAL-INFORME), para consultarla desde cualquier dispositivo sin rehacerla. El agente escribe solo los IDs; las demás columnas se calculan desde `vacantes` y `evaluaciones`, en la hoja con fórmulas y en modo local con la herramienta (REG-LOCAL), que sigue su misma lógica.
+La tabla resumen de cada búsqueda (08/EVAL-INFORME), para consultarla sin rehacerla. El agente escribe solo los IDs. Las demás columnas no se guardan: la herramienta las calcula desde `vacantes` y `evaluaciones` cada vez que da la tabla (`informe`) o regenera la instantánea (REG-LOCAL).
 
 | Columna | Tipo | Oblig. | Valores y reglas |
 | --- | --- | --- | --- |
@@ -204,14 +190,14 @@ La tabla resumen de cada búsqueda (08/EVAL-INFORME), para consultarla desde cua
 | encaje | Calculada | — | `encaje · cobertura`; `—` si está excluida |
 | antiguedad | Calculada | — | 08/EVAL-ANTIGUEDAD con la fecha de hoy: `N d` desde la más antigua entre `fecha_publicacion` y `primera_deteccion`; `≥ N d` si solo hay `primera_deteccion`; `—` si no tiene fecha y se detectó hoy; `· antigua` desde el umbral de 08/EVAL-ACUERDOS (20 días por defecto) |
 | alertas | Calculada | — | Si está excluida: `Excluida: …` con `condiciones_detalle` separado por `;`. Si no, unidos con ` · `: `Insuficiente: …` y `Académica: …` con los núcleos de esa categoría en `nucleos`, separados por `;`, y `Pendiente: …` con los pendientes de `condiciones_detalle` que no sean Sueldo, Duración, Relación ni Horario, en minúsculas. `—` si no hay nada (08/EVAL-INFORME) |
-| url_oficial | Calculada | — | La de `vacantes`. Se repite porque el conector solo devuelve el texto de la columna `vacante`, no su liga |
+| url_oficial | Calculada | — | La de `vacantes`, aparte, porque `informe` da `vacante` como texto, sin su liga |
 
 - **Una fila por vacante evaluada de la tabla,** incluidas las excluidas, en el orden de la tabla. No tiene ID propio: cada fila es la pareja `busqueda_id` + `vacante_id`. Las vacantes no evaluadas no tienen fila, y la línea «N sin relación…» no se guarda.
-- **Columnas calculadas en la hoja:** cada una es una sola fórmula en su encabezado (fila 1), la de su `formula` en REG-ESQUEMA. Devuelve el encabezado y el valor de todas las filas (`MAP` con búsqueda por ID), con rangos abiertos que incluyen las filas nuevas. En D:I no se escribe: están protegidas con advertencia. Un ID inexistente muestra `#N/A`.
-- **Umbral de «antigua»:** el 20 de la fórmula de `antiguedad` es el valor por defecto de 08/EVAL-ACUERDOS. Si el titular lo cambia, se cambia en la fórmula del bloque y en la celda G1 de la hoja. La herramienta del modo local lo lee de la fórmula del bloque.
-- **Al editar una fórmula:** dentro de `MAP`, `REGEXREPLACE` sobre una lista devuelve solo el primer elemento; por eso `alertas` une primero con `TEXTJOIN` y quita la categoría con `SUBSTITUTE`. La herramienta del modo local repite la lógica de cada fórmula (REG-LOCAL), así que un cambio de fórmula se hace también en `herramientas/registros.py` y en su prueba.
+- **Referencias que faltan:** si la vacante o la evaluación de una fila no existe, sus columnas calculadas dicen `#N/A`.
+- **Umbral de «antigua»:** la herramienta lo lee de la línea «Marca «antigua»» de 08/EVAL-ACUERDOS, donde el titular lo cambia; sin esa línea, usa 20 días.
+- **Un solo cálculo:** la lógica de estas columnas vive solo en `herramientas/registros.py`. Un cambio de estas reglas se hace en la herramienta, en su prueba y en esta tabla.
 - **Vista, no autoridad:** si una aclaración actualiza la fila de `evaluaciones` (08/EVAL-REGISTRO), la tabla lo refleja. Cuando una búsqueda posterior hace una evaluación nueva, esta aparece en las filas de esa búsqueda, y las filas anteriores siguen mostrando la evaluación que se entregó en su momento.
-- **Antigüedad:** cambia cada día, con la fecha de hoy en la zona horaria de 04, que es la de la hoja. Las fechas relativas («hace 3 días») no se guardan, así que aquí no aparecen.
+- **Antigüedad:** cambia cada día, con la fecha de hoy en la zona horaria de 04. Las fechas relativas («hace 3 días») no se guardan, así que aquí no aparecen.
 
 ### Relaciones
 
@@ -257,15 +243,15 @@ Los análisis ignoran las filas con `duplicado_de`.
 - `job_id` no cambia, salvo que pase de `No publicado` a un valor.
 - Las habilidades se registran en el primer análisis de la descripción. Al volver a analizarla, se comparan las extraídas con las ya registradas de esa vacante: si difieren, se registra el conjunto nuevo con la observación actual; si no, no se duplican filas. El conjunto vigente de habilidades de una vacante es el de su última observación analizada.
 
-**Versiones:** no se borran filas, salvo los datos sintéticos. El historial de Sheets, o git en modo local, cubre las ediciones.
+**Versiones:** no se borran filas, salvo los datos sintéticos. git cubre las ediciones (REG-LOCAL, «Historial y respaldo»).
 
 ## REG-ESQUEMA — Bloque del esquema
 
-El esquema completo en la forma que lee una herramienta: pestañas, columnas, listas cerradas, validaciones y fórmulas de `informes`. Es el primer bloque ```` ```json ```` de esta sección, y de él salen la hoja (REG-VALIDACION) y el archivo local (REG-LOCAL). Dice lo mismo que las tablas de REG-CAMPOS: al cambiar una columna se cambian los dos, según REG-DECISIONES («Encabezados»).
+El esquema completo en la forma que lee una herramienta: pestañas, columnas, listas cerradas y validaciones. Es el primer bloque ```` ```json ```` de esta sección, y de él salen el archivo de registros y las comprobaciones de su herramienta (REG-LOCAL). Dice lo mismo que las tablas de REG-CAMPOS: al cambiar una columna se cambian los dos, según REG-DECISIONES («Encabezados»).
 
 ```json
 {
-  "hoja": {"nombre": "ChambaKit_Registros", "configuracion_regional": "en_US", "filas": 1000},
+  "archivo": {"nombre": "ChambaKit_Registros"},
   "pestanas": [
     {
       "nombre": "vacantes",
@@ -282,8 +268,7 @@ El esquema completo en la forma que lee una herramienta: pestañas, columnas, li
         {"nombre": "primera_deteccion", "tipo": "fecha", "oblig": "si"},
         {"nombre": "ultima_observacion_id", "tipo": "ref", "patron": "OBS-\\d{4,}", "en": "observaciones", "misma_vacante": true, "oblig": "si", "vacia_con": "duplicado_de"},
         {"nombre": "duplicado_de", "tipo": "ref", "patron": "VAC-\\d{4,}", "en": "vacantes", "distinta_de": "vacante_id", "oblig": "no"}
-      ],
-      "prueba": {"vacante_id": "PRUEBA-VAC-0001", "empresa_id": "EMP-PRUEBA", "job_id": "000123", "titulo": "Puesto de prueba", "url_oficial": "https://example.com/empleo/000123", "ubicacion_literal": "Ciudad de prueba", "modalidad_literal": "No publicado", "region_relacionada": "Indeterminada", "fecha_publicacion": "2026-01-05", "primera_deteccion": "2026-01-10", "ultima_observacion_id": "PRUEBA-OBS-0001"}
+      ]
     },
     {
       "nombre": "observaciones",
@@ -296,8 +281,7 @@ El esquema completo en la forma que lee una herramienta: pestañas, columnas, li
         {"nombre": "motivo", "tipo": "texto", "oblig": "si"},
         {"nombre": "url_fuente", "tipo": "url", "oblig": "si_existe"},
         {"nombre": "tipo_fuente", "tipo": "lista", "valores": ["Oficial", "Agregador", "Buscador", "Aportada por el titular"], "oblig": "si"}
-      ],
-      "prueba": {"observacion_id": "PRUEBA-OBS-0001", "vacante_id": "PRUEBA-VAC-0001", "busqueda_id": "PRUEBA-BUS-0001", "fecha_verificacion": "2026-01-10", "estado_vigencia": "Confirmada abierta", "motivo": "En listado oficial; detalle no consultado", "url_fuente": "https://example.com/empleo/000123", "tipo_fuente": "Oficial"}
+      ]
     },
     {
       "nombre": "habilidades_vacante",
@@ -308,8 +292,7 @@ El esquema completo en la forma que lee una herramienta: pestañas, columnas, li
         {"nombre": "habilidad_literal", "tipo": "texto", "oblig": "si"},
         {"nombre": "habilidad_normalizada", "tipo": "texto", "oblig": "no"},
         {"nombre": "tipo_requisito", "tipo": "lista", "valores": ["Obligatorio", "Deseable", "En funciones", "Ambiguo"], "oblig": "si"}
-      ],
-      "prueba": {"habilidad_observacion_id": "PRUEBA-HV-00001", "vacante_id": "PRUEBA-VAC-0001", "observacion_id": "PRUEBA-OBS-0001", "habilidad_literal": "Experience with Python", "habilidad_normalizada": "Python", "tipo_requisito": "Obligatorio"}
+      ]
     },
     {
       "nombre": "documentos",
@@ -325,8 +308,7 @@ El esquema completo en la forma que lee una herramienta: pestañas, columnas, li
         {"nombre": "revision_visual", "tipo": "lista", "valores": ["Satisfactoria", "Con fallas", "No realizada", "No aplica"], "oblig": "si"},
         {"nombre": "texto_extraible", "tipo": "lista", "valores": ["Satisfactoria", "Con fallas", "No realizada", "No aplica"], "oblig": "si"},
         {"nombre": "notas", "tipo": "texto", "oblig": "no"}
-      ],
-      "prueba": {"documento_id": "PRUEBA-DOC-0001", "vacante_id": "PRUEBA-VAC-0001", "fecha_generacion": "2026-01-10", "version_perfil": "1.10", "version_cv_base": "1.0", "idioma": "ES", "formato": "PDF", "archivo": "CV_prueba.pdf", "revision_visual": "No realizada", "texto_extraible": "No realizada", "notas": "Prueba"}
+      ]
     },
     {
       "nombre": "busquedas",
@@ -338,10 +320,8 @@ El esquema completo en la forma que lee una herramienta: pestañas, columnas, li
         {"nombre": "fuentes_consultas_filtros", "tipo": "multivalor", "oblig": "si"},
         {"nombre": "cobertura_limitaciones", "tipo": "texto", "oblig": "si"},
         {"nombre": "no_revisado_pendientes", "tipo": "texto", "oblig": "si"},
-        {"nombre": "comparacion_anterior", "tipo": "texto", "oblig": "si"},
-        {"nombre": "canal", "tipo": "lista", "valores": ["Code", "Web"], "oblig": "si"}
-      ],
-      "prueba": {"busqueda_id": "PRUEBA-BUS-0001", "fecha_hora": "2026-01-10 09:30", "solicitud_alcance": "Prueba de la hoja", "recursos_versiones": "11 v1.0", "fuentes_consultas_filtros": "Sin consultas", "cobertura_limitaciones": "Sin listado", "no_revisado_pendientes": "Ninguno", "comparacion_anterior": "Sin búsqueda comparable", "canal": "Code"}
+        {"nombre": "comparacion_anterior", "tipo": "texto", "oblig": "si"}
+      ]
     },
     {
       "nombre": "evaluaciones",
@@ -357,8 +337,7 @@ El esquema completo en la forma que lee una herramienta: pestañas, columnas, li
         {"nombre": "encaje", "tipo": "lista", "valores": ["★★★★★", "★★★★☆", "★★★☆☆", "★★☆☆☆", "★☆☆☆☆", "☆☆☆☆☆"], "oblig": "si_existe"},
         {"nombre": "cobertura", "tipo": "patron", "patron": "\\d+/\\d+(, \\d+ solo académicos?)?", "oblig": "si_existe"},
         {"nombre": "nucleos", "tipo": "multivalor", "oblig": "si_existe"}
-      ],
-      "prueba": {"evaluacion_id": "PRUEBA-EVA-0001", "vacante_id": "PRUEBA-VAC-0001", "observacion_id": "PRUEBA-OBS-0001", "fecha_evaluacion": "2026-01-10", "version_perfil": "1.0", "version_evaluacion": "1.0", "condiciones": "Sin exclusiones", "condiciones_detalle": "Sueldo | Remoto", "encaje": "★★★☆☆", "cobertura": "3/4, 1 solo académico", "nucleos": "Núcleo A: Directa | Núcleo B: Insuficiente | Núcleo C: Académica/formativa"}
+      ]
     },
     {
       "nombre": "informes",
@@ -366,14 +345,13 @@ El esquema completo en la forma que lee una herramienta: pestañas, columnas, li
         {"nombre": "busqueda_id", "tipo": "ref", "patron": "BUS-\\d{4,}", "en": "busquedas", "oblig": "si"},
         {"nombre": "vacante_id", "tipo": "ref", "patron": "VAC-\\d{4,}", "en": "vacantes", "unica_con": "busqueda_id", "oblig": "si"},
         {"nombre": "evaluacion_id", "tipo": "ref", "patron": "EVA-\\d{4,}", "en": "evaluaciones", "misma_vacante": true, "oblig": "si"},
-        {"nombre": "empresa", "tipo": "calculada", "formula": "={\"empresa\";MAP(B2:B,LAMBDA(v,IF(v=\"\",,SUBSTITUTE(XLOOKUP(v,vacantes!A2:A,vacantes!B2:B),\"EMP-\",\"\"))))}"},
-        {"nombre": "vacante", "tipo": "calculada", "formula": "={\"vacante\";MAP(B2:B,LAMBDA(v,IF(v=\"\",,LET(j,XLOOKUP(v,vacantes!A2:A,vacantes!C2:C),t,XLOOKUP(v,vacantes!A2:A,vacantes!D2:D),u,XLOOKUP(v,vacantes!A2:A,vacantes!E2:E),HYPERLINK(u,IF(OR(j=\"\",j=\"No publicado\"),\"sin Job ID\",j)&\" — \"&t)))))}"},
-        {"nombre": "encaje", "tipo": "calculada", "formula": "={\"encaje\";MAP(C2:C,LAMBDA(e,IF(e=\"\",,LET(c,XLOOKUP(e,evaluaciones!A2:A,evaluaciones!G2:G),s,XLOOKUP(e,evaluaciones!A2:A,evaluaciones!I2:I),k,XLOOKUP(e,evaluaciones!A2:A,evaluaciones!J2:J),IF(c=\"Excluida\",\"—\",s&IF(k=\"\",\"\",\" · \"&k))))))}"},
-        {"nombre": "antiguedad", "tipo": "calculada", "formula": "={\"antiguedad\";MAP(B2:B,LAMBDA(v,IF(v=\"\",,LET(fp,XLOOKUP(v,vacantes!A2:A,vacantes!I2:I),pd,DATEVALUE(XLOOKUP(v,vacantes!A2:A,vacantes!J2:J)),h,TODAY(),n,IF(fp=\"\",h-pd,h-MIN(DATEVALUE(fp),pd)),IF(AND(fp=\"\",n<=0),\"—\",IF(fp=\"\",\"≥ \",\"\")&n&\" d\"&IF(n>=20,\" · antigua\",\"\"))))))}"},
-        {"nombre": "alertas", "tipo": "calculada", "formula": "={\"alertas\";MAP(C2:C,LAMBDA(e,IF(e=\"\",,LET(c,XLOOKUP(e,evaluaciones!A2:A,evaluaciones!G2:G),d,XLOOKUP(e,evaluaciones!A2:A,evaluaciones!H2:H),n,XLOOKUP(e,evaluaciones!A2:A,evaluaciones!K2:K),IF(c=\"Excluida\",\"Excluida: \"&SUBSTITUTE(d,\" | \",\"; \"),LET(ns,SPLIT(n&\"\",\" | \",FALSE),ins,IFERROR(SUBSTITUTE(TEXTJOIN(\"; \",TRUE,FILTER(ns,REGEXMATCH(ns,\": Insuficiente$\"))),\": Insuficiente\",\"\"),\"\"),aca,IFERROR(SUBSTITUTE(TEXTJOIN(\"; \",TRUE,FILTER(ns,REGEXMATCH(ns,\": Académica/formativa$\"))),\": Académica/formativa\",\"\"),\"\"),ps,SPLIT(d&\"\",\" | \",FALSE),pen,IFERROR(LOWER(TEXTJOIN(\", \",TRUE,FILTER(ps,NOT(REGEXMATCH(ps,\"^(Sueldo|Duración|Relación|Horario|Ninguno)$\"))))),\"\"),r,TEXTJOIN(\" · \",TRUE,IF(ins=\"\",\"\",\"Insuficiente: \"&ins),IF(aca=\"\",\"\",\"Académica: \"&aca),IF(pen=\"\",\"\",\"Pendiente: \"&pen)),IF(r=\"\",\"—\",r)))))))}"},
-        {"nombre": "url_oficial", "tipo": "calculada", "formula": "={\"url_oficial\";MAP(B2:B,LAMBDA(v,IF(v=\"\",,XLOOKUP(v,vacantes!A2:A,vacantes!E2:E))))}"}
-      ],
-      "prueba": {"busqueda_id": "PRUEBA-BUS-0001", "vacante_id": "PRUEBA-VAC-0001", "evaluacion_id": "PRUEBA-EVA-0001"}
+        {"nombre": "empresa", "tipo": "calculada"},
+        {"nombre": "vacante", "tipo": "calculada"},
+        {"nombre": "encaje", "tipo": "calculada"},
+        {"nombre": "antiguedad", "tipo": "calculada"},
+        {"nombre": "alertas", "tipo": "calculada"},
+        {"nombre": "url_oficial", "tipo": "calculada"}
+      ]
     }
   ]
 }
@@ -383,14 +361,12 @@ El esquema completo en la forma que lee una herramienta: pestañas, columnas, li
 
 | Campo | Qué lleva |
 | --- | --- |
-| `hoja.nombre` | El nombre del archivo en Drive; en modo local, el del archivo, con `.xlsx` |
-| `hoja.configuracion_regional` | La configuración regional de la hoja. Es un requisito técnico, no la región del titular: las fórmulas del bloque separan sus argumentos con comas, y con una configuración de coma decimal, como `es_ES`, el conector las rechaza. Como las celdas de datos son texto, no cambia lo que se ve |
-| `hoja.filas` | Las filas con que nace cada pestaña, contando el encabezado (REG-VALIDACION, «Crecimiento») |
-| `pestanas` | Las pestañas, en su orden en la hoja |
+| `archivo.nombre` | El nombre del archivo de registros, sin `.xlsx` |
+| `pestanas` | Las pestañas, en su orden en el archivo |
 | `pestanas[].columnas` | Las columnas de la pestaña, en orden: la primera es la A |
 | `columnas[].nombre` | El encabezado, en la fila 1 |
-| `columnas[].tipo` | `id`, `ref`, `texto`, `multivalor`, `fecha`, `url`, `patron`, `lista` o `calculada`. Su validación en la hoja está en REG-VALIDACION |
-| `columnas[].oblig` | `si`, `si_existe` o `no` (REG-CONVENCIONES, «Obligatoriedad»). Las calculadas no lo llevan. Lo comprueba la herramienta del modo local; la hoja no lo usa |
+| `columnas[].tipo` | `id`, `ref`, `texto`, `multivalor`, `fecha`, `url`, `patron`, `lista` o `calculada` (REG-CONVENCIONES, «Tipos»). Una `calculada` no se guarda: la calcula la herramienta (REG-CAMPOS, `informes`) |
+| `columnas[].oblig` | `si`, `si_existe` o `no` (REG-CONVENCIONES, «Obligatoriedad»). Las calculadas no lo llevan |
 | `columnas[].vacia_con` | Con `oblig` `si`: la columna puede quedar vacía cuando la nombrada tiene valor, como `ultima_observacion_id` en una fila absorbida (REG-IDENTIDAD) |
 | `columnas[].patron` | En `id`, `ref` y `patron`: la expresión regular que cumple el valor completo. En `id` y `ref` se admite además `PRUEBA-` delante |
 | `columnas[].hora` | En `fecha`: `true` si admite la hora `HH:MM` |
@@ -400,69 +376,8 @@ El esquema completo en la forma que lee una herramienta: pestañas, columnas, li
 | `columnas[].misma_vacante` | En `ref`: `true` si la fila citada tiene el mismo `vacante_id` que esta fila |
 | `columnas[].unica_con` | En `ref`: la pareja de esta columna con la nombrada no se repite en la pestaña |
 | `columnas[].distinta_de` | En `ref`: no puede ser igual a la columna nombrada de la misma fila |
-| `columnas[].formula` | En `calculada`: la fórmula de su encabezado, que devuelve el encabezado y los valores de todas las filas |
-| `pestanas[].prueba` | Una fila de datos sintéticos válidos para comprobar la hoja (REG-VALIDACION, «Comprobación»). En `informes`, solo las columnas que se escriben |
 
-## REG-VALIDACION — Creación y validación de la hoja
-
-### Creación
-
-Con los conectores de Google Drive y Google Sheets, en este orden. Cada paso es una llamada, salvo donde se indica:
-
-1. **Archivo:** con Drive, una hoja de cálculo nueva con el `nombre` del bloque. Nace con una pestaña de `sheetId` 0.
-2. **Configuración regional y zona horaria:** la `configuracion_regional` del bloque y la `zona_horaria` de 04, en una llamada propia y antes de cualquier validación. El conector lee las fórmulas con la configuración vigente al empezar cada llamada: en la misma llamada que las validaciones, las rechazaría.
-3. **Pestañas:** la pestaña 0 toma el nombre de la primera del bloque y se agregan las demás en orden, cada una con `filas` filas. En todas, la fila 1 queda fija.
-4. **Encabezados:** los `nombre` de cada pestaña en su fila 1. En `informes`, solo A1:C1; las fórmulas van en el paso 8.
-5. **Formato de texto:** en cada columna que no es calculada, de la fila 2 al final, antes de escribir cualquier dato.
-6. **Validaciones:** las de la tabla de abajo, cada una de la fila 2 al final de su columna.
-7. **Protección:** las columnas calculadas, desde la fila 1, protegidas solo con advertencia.
-8. **Fórmulas:** la `formula` de cada columna calculada, en su celda de la fila 1.
-
-Los pasos 3 a 7 pueden ir en una sola llamada.
-
-**Validación por tipo.** `X` es la letra de la columna; la fórmula se escribe para la fila 2 y la hoja la ajusta en las demás. `{patron}` es el de la columna.
-
-| Tipo | Regla | Fórmula o condición | Rechaza |
-| --- | --- | --- | --- |
-| `id` | Patrón y único | `=AND(REGEXMATCH(X2,"^(PRUEBA-)?{patron}$"),COUNTIF($X$2:$X,X2)=1)` | Sí |
-| `ref` | Patrón y existe en la columna A de `en` | `=AND(REGEXMATCH(X2,"^(PRUEBA-)?{patron}$"),COUNTIF(INDIRECT("{en}!A2:A"),X2)>0)` | No |
-| `fecha` | Patrón y fecha real | `=AND(REGEXMATCH(X2,"^\d{4}-\d{2}-\d{2}$"),ISNUMBER(DATEVALUE(X2)))` | Sí |
-| `fecha` con `hora` | Patrón, fecha real y hora válida | `=AND(REGEXMATCH(X2,"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$"),ISNUMBER(DATEVALUE(LEFT(X2,10))),OR(LEN(X2)=10,ISNUMBER(TIMEVALUE(RIGHT(X2,5)))))` | Sí |
-| `url` | Empieza con `http://` o `https://` y no tiene espacios | `=REGEXMATCH(X2,"^https?://\S+$")` | Sí |
-| `patron` | Patrón | `=REGEXMATCH(X2,"^{patron}$")` | Sí |
-| `lista` | Uno de `valores`, con desplegable | Condición de lista (`ONE_OF_LIST`) | Sí |
-| `texto`, `multivalor` y `calculada` | Ninguna | — | — |
-
-- **Variantes de `ref`:** cada modificador cambia o agrega una condición dentro del `AND`:
-  - `misma_vacante`: el `COUNTIF` pasa a `COUNTIFS(INDIRECT("{en}!A2:A"),X2,INDIRECT("{en}!V2:V"),W2)>0`, donde `V` es la letra de `vacante_id` en `en` y `W`, la de `vacante_id` en esta pestaña.
-  - `unica_con`: se agrega `COUNTIFS($U$2:$U,U2,$X$2:$X,X2)=1`, donde `U` es la letra de la columna nombrada.
-  - `distinta_de`: se agrega `X2<>D2`, donde `D` es la letra de la columna nombrada.
-  - Si `en` es la misma pestaña, el rango es `$A$2:$A`, sin `INDIRECT`.
-- **`INDIRECT`:** una validación no puede citar otra pestaña directamente; por eso las referencias a otras pestañas lo usan.
-- **`valores_de: 06/CAT-EMPRESAS`:** los IDs de la tabla CAT-EMPRESAS de 06. Si el catálogo está vacío, la columna queda sin validación hasta la primera empresa. Al agregar una empresa a 06, la lista se vuelve a aplicar con todos los IDs.
-- **URL:** la validación de URL propia de Sheets no pasa por el conector, así que se usa la fórmula.
-- **Rigor:** las listas, los IDs propios, las fechas, las URL y los patrones rechazan la entrada manual inválida. Las referencias solo marcan la celda, para que el orden en que se escriben o pegan las filas no bloquee la captura. Ninguna detiene al conector (REG-HOJA).
-
-### Comprobación
-
-Al crear la hoja, y cada vez que cambie su estructura, se comprueba con las filas `prueba` del bloque:
-
-1. **Filas de prueba:** la `prueba` de cada pestaña va en su fila 2, en este orden: `busquedas`, `vacantes`, `observaciones`, `habilidades_vacante`, `documentos`, `evaluaciones` e `informes` (en esta, solo A:C).
-2. **Fórmulas de validación:** en cada pestaña, en la columna que sigue a la última del esquema, fila 2, una fórmula temporal `={…}` con las fórmulas de validación de esa fila, sin su `=` y separadas por comas, solo de las columnas validadas con fórmula que tienen valor en la prueba. Todas deben dar `TRUE`.
-3. **Lectura:** cada pestaña completa, de A1 a la columna de la fórmula temporal:
-   - Los encabezados, en el orden del bloque.
-   - Los valores de prueba, tal como se escribieron: `000123` y `1.10` no pierden ceros y las fechas siguen como texto.
-   - En `informes`, D2:I2: `PRUEBA`, `000123 — Puesto de prueba`, `★★★☆☆ · 3/4, 1 solo académico`, `N d · antigua` (N, los días desde el 2026-01-05 hasta hoy en la zona horaria de 04), `Insuficiente: Núcleo B · Académica: Núcleo C · Pendiente: remoto` y `https://example.com/empleo/000123`.
-4. **Reglas:** la configuración regional y la zona horaria de la hoja, la regla de validación de cada columna en la fila 2 (con sus valores en las listas y `strict` según «Rechaza»; `empresa_id` no tiene regla si 06 no tiene empresas), la fila 1 fija en cada pestaña y la protección de las columnas calculadas.
-5. **Borrado:** los valores de la fila 2 de cada pestaña y la fórmula temporal; en `informes`, solo A:C y la fórmula temporal, porque D:I son las fórmulas. Después, cada pestaña muestra solo su encabezado.
-
-`EMP-PRUEBA` no está en la lista de `empresa_id`, así que esa celda queda marcada mientras dura la prueba. Si algo no cuadra, se corrige en la hoja y se repite la comprobación.
-
-### Crecimiento
-
-Cada pestaña nace con `filas` filas. Cuando una escritura no cabe, se insertan filas **dentro** del rango validado: antes de la última fila, heredando de la anterior. Así la validación y el formato de texto se extienden solos. No se insertan justo debajo del encabezado, porque heredarían su formato y quedarían sin validación.
-
-## REG-LOCAL — Archivo local (modo local)
+## REG-LOCAL — El archivo y su herramienta
 
 El archivo `ChambaKit_Registros.xlsx` (el `nombre` del bloque) está en la raíz de la copia. Se lee y se escribe solo con `herramientas/registros.py`, con el Python del entorno virtual de la copia, que tiene `openpyxl`:
 
@@ -472,16 +387,16 @@ El archivo `ChambaKit_Registros.xlsx` (el `nombre` del bloque) está en la raíz
 
 En Windows, el Python es `.venv\Scripts\python.exe`. `--help` da las órdenes y la forma de su entrada, que va por stdin o en un archivo del directorio temporal de la sesión, nunca de la copia.
 
-- **Creación:** `crear`, desde el bloque, en el paso 8 de `/configurar`. Lleva las pestañas y columnas del bloque, salvo las calculadas de `informes`, que no se guardan. No necesita la comprobación con filas `prueba` de REG-VALIDACION: la validación está en la herramienta, y sus pruebas automáticas la cubren.
-- **Escritura:** `agregar` y `actualizar` comprueban cada fila que escriben contra el bloque: lo mismo que valida la hoja, más la obligatoriedad, y las referencias rechazan en lugar de solo marcar. Si una fila no cumple, no escriben ninguna y dicen qué corregir. Solo comprueban las filas que escriben: un cambio no vuelve a comprobar las filas que citan a la cambiada. Las referencias se resuelven contra lo ya registrado más lo de la misma llamada, así que una búsqueda se registra en dos llamadas (07/BUS-REGISTRO): `agregar` con todas sus filas nuevas, de todas las pestañas, y `actualizar` con los cambios a las filas ya registradas. Después de escribir, las dos regeneran la instantánea (REG-INSTANTANEA); si rechazan la entrada, no la tocan. `instantanea` la regenera a pedido, por ejemplo si alguien la borró o la editó.
-- **Lectura:** `leer` da una pestaña completa o las filas de unos IDs. `informe` da la tabla resumen de una búsqueda: sus filas de `informes` con las columnas calculadas, con la lógica de las fórmulas del bloque y la fecha de hoy en la zona horaria de 04. `exportar` da todas las pestañas a la vez, fila por fila y con el rango de la hoja donde van, para el cambio a la hoja (REG-HOJA); los valores que la hoja interpretaría ya llevan su `'` delante.
+- **Creación:** `crear`, desde el bloque, en el paso 8 de `/configurar`. Lleva las pestañas y columnas del bloque, salvo las calculadas de `informes`, que no se guardan. La validación está en la herramienta, y sus pruebas automáticas la cubren.
+- **Escritura:** `agregar` y `actualizar` comprueban cada fila que escriben contra el bloque: tipos, listas, obligatoriedad, IDs únicos y referencias. Si una fila no cumple, no escriben ninguna y dicen qué corregir. Solo comprueban las filas que escriben: un cambio no vuelve a comprobar las filas que citan a la cambiada. Las referencias se resuelven contra lo ya registrado más lo de la misma llamada, así que una búsqueda se registra en dos llamadas (07/BUS-REGISTRO): `agregar` con todas sus filas nuevas, de todas las pestañas, y `actualizar` con los cambios a las filas ya registradas. Después de escribir, las dos regeneran la instantánea (REG-INSTANTANEA); si rechazan la entrada, no la tocan. `instantanea` la regenera a pedido, por ejemplo si alguien la borró o la editó.
+- **Lectura:** `leer` da una pestaña completa o las filas de unos IDs. `informe` da la tabla resumen de una búsqueda: sus filas de `informes` con las columnas calculadas de REG-CAMPOS, a la fecha de hoy en la zona horaria de 04 y con el umbral de «antigua» de 08/EVAL-ACUERDOS.
 - **Encabezados:** la herramienta los compara con el bloque en cada uso y se detiene si no coinciden (REG-DECISIONES, «Encabezados»).
 - **Historial y respaldo:** git. El archivo se versiona en la copia, así que no se ignora. Al cerrar una sesión que lo modificó, el agente le ofrece al titular un commit con él y, si la copia tiene remoto privado, el push.
 - **Edición a mano:** el titular puede abrir el archivo en una hoja de cálculo para consultarlo. Las filas se escriben con la herramienta, que es la que las comprueba.
 
 ## REG-INSTANTANEA — Instantánea para el canal Web
 
-La copia en Markdown del archivo local que lee el canal Web: la carpeta `instantanea/` de la copia, con dos vistas. Es una vista, no una autoridad: manda el archivo.
+La copia en Markdown del archivo de registros que lee el canal Web: la carpeta `instantanea/` de la copia, con dos vistas. Es una vista, no una autoridad: manda el archivo.
 
 - **`informes.md`:** las últimas 10 búsquedas, la más reciente primero. Cada una lleva su fila de `busquedas` (alcance, cobertura, pendientes y comparación) y su tabla resumen con el formato de 08/EVAL-INFORME, con las columnas calculadas de `informes`.
 - **`vacantes.md`:** una sección por cada vacante con evaluación cuya última observación no es `Cerrada`, salvo las filas absorbidas por una fusión (`duplicado_de`, REG-IDENTIDAD). El encabezado lleva el `VAC-` ID, el Job ID, el `empresa_id` y el título, para encontrarla aunque solo llegue un fragmento. Debajo van sus campos de `vacantes` y su antigüedad, su última observación, su última evaluación registrada y los requisitos de la observación evaluada. Los requisitos van agrupados por frase literal, con sus términos normalizados y su tipo, así que «Python or R» sigue siendo una alternativa.
@@ -504,7 +419,7 @@ La copia en Markdown del archivo local que lee el canal Web: la carpeta `instant
 - **Sin duplicar datos:** ninguna columna repite datos de otra pestaña, salvo tres atajos con regla de mantenimiento: `vacantes.primera_deteccion`, `vacantes.ultima_observacion_id` y `habilidades_vacante.vacante_id`. `informes` no copia valores: guarda IDs y calcula el resto.
 - **Datos sintéticos de prueba:** marcarlos como tales y borrarlos después.
 - **Ámbito:** cada pestaña abarca todas las empresas; no crear registros por empresa.
-- **Encabezados:** no se cambian sin acordarlo aquí. Un cambio se hace en REG-CAMPOS, en el bloque de REG-ESQUEMA y en la hoja o el archivo local; la hoja se comprueba según REG-VALIDACION.
+- **Encabezados:** no se cambian sin acordarlo aquí. Un cambio se hace en REG-CAMPOS, en el bloque de REG-ESQUEMA y en el archivo de registros.
 - **Postulaciones:** no se registran y no hay pestaña de seguimiento. Para postular, el titular pide el CV en el formato que exija la vacante (09) y postula por su cuenta, manualmente. El documento queda en `documentos`. El agente no envía candidaturas ni contacta a terceros.
 
 ## REG-PENDIENTES

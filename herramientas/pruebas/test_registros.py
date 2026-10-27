@@ -1,10 +1,10 @@
-"""Pruebas de la herramienta de registros locales (modo local), por su línea de comandos y sin red.
+"""Pruebas de la herramienta del archivo de registros, por su línea de comandos y sin red.
 
 Uso, con el Python de un entorno virtual que tiene openpyxl (CONTRIBUTING, «Pruebas»):
     .venv/bin/python -I -B -m unittest discover -s herramientas/pruebas
 
-Sin openpyxl, se saltan. Cada prueba arma una copia ficticia con el script, el 11 de la plantilla, un
-04 con la zona horaria y un 06 con empresas ficticias. Los datos son sintéticos.
+Sin openpyxl, se saltan. Cada prueba arma una copia ficticia con el script, el 08 y el 11 de la plantilla,
+un 04 con la zona horaria y un 06 con empresas ficticias. Los datos son sintéticos.
 """
 import datetime as dt
 import importlib.util
@@ -46,7 +46,7 @@ def busqueda_ficticia():
                        "solicitud_alcance": "Búsqueda ficticia", "recursos_versiones": "07 v1.0 | 11 v1.0",
                        "fuentes_consultas_filtros": "herramientas/buscar.py v1.0 | portal ficticio",
                        "cobertura_limitaciones": "2 únicos de 2, completa", "no_revisado_pendientes": "Ninguno",
-                       "comparacion_anterior": "Sin búsqueda comparable", "canal": "Code"}],
+                       "comparacion_anterior": "Sin búsqueda comparable"}],
         "vacantes": [
             {"vacante_id": "VAC-0001", "empresa_id": "EMP-XA", "job_id": "000123", "titulo": "Puesto ficticio",
              "url_oficial": "https://example.com/empleo/000123", "ubicacion_literal": "Ciudad A1, País A",
@@ -89,6 +89,7 @@ class CopiaFicticia(unittest.TestCase):
         (self.dir / "herramientas").mkdir()
         shutil.copy(SCRIPT, self.dir / "herramientas")
         shutil.copy(RAIZ / "11_ESQUEMAS_DE_REGISTROS.md", self.dir)
+        shutil.copy(RAIZ / "08_EVALUACION_DE_VACANTES.md", self.dir)
         (self.dir / "04_PREFERENCIAS_LABORALES.md").write_text(modulo_04(), encoding="utf-8")
         (self.dir / "06_EMPRESAS_OBJETIVO.md").write_text(modulo_06(["EMP-XA", "EMP-PRUEBA"]), encoding="utf-8")
         self.archivo = self.dir / "ChambaKit_Registros.xlsx"
@@ -145,10 +146,10 @@ class Crear(CopiaFicticia):
         self.ok("crear")
         modulo = self.dir / "11_ESQUEMAS_DE_REGISTROS.md"
         texto = modulo.read_text(encoding="utf-8")
-        modulo.write_text(texto.replace('{"nombre": "canal",', '{"nombre": "canal_nuevo",'), encoding="utf-8")
+        modulo.write_text(texto.replace('{"nombre": "comparacion_anterior",', '{"nombre": "comparacion_nueva",'), encoding="utf-8")
         r = self.correr("leer", "busquedas")
         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
-        self.assertIn("canal_nuevo", r.stderr)
+        self.assertIn("comparacion_nueva", r.stderr)
         self.assertIn("Encabezados", r.stderr)
         self.assertNotIn("Traceback", r.stderr)
 
@@ -175,9 +176,9 @@ class Agregar(CopiaFicticia):
         self.ok("agregar", entrada=busqueda)
         self.ok("actualizar", entrada={"observaciones": [{"observacion_id": "OBS-0002", "motivo": "=1+1"}]})
         libro = openpyxl.load_workbook(self.archivo)
-        for hoja, celda in (("habilidades_vacante", "D2"), ("observaciones", "F3")):
-            with self.subTest(hoja=hoja):
-                self.assertEqual(libro[hoja][celda].data_type, "s")
+        for pestana, celda in (("habilidades_vacante", "D2"), ("observaciones", "F3")):
+            with self.subTest(pestana=pestana):
+                self.assertEqual(libro[pestana][celda].data_type, "s")
         self.assertEqual(self.leer("observaciones", "--id", "OBS-0002")[0]["motivo"], "=1+1")
 
     def test_rechaza_las_filas_que_no_cumplen_el_esquema_y_no_escribe_ninguna(self):
@@ -287,66 +288,6 @@ class Leer(CopiaFicticia):
         self.assertNotIn("Traceback", r.stderr)
 
 
-class Exportar(CopiaFicticia):
-    def setUp(self):
-        super().setUp()
-        self.columnas = self.ok("crear")["pestanas"]
-
-    def test_da_cada_pestana_como_filas_en_el_orden_de_sus_columnas_con_su_rango_y_su_conteo(self):
-        busqueda = busqueda_ficticia()
-        self.ok("agregar", entrada=busqueda)
-        exportado = self.ok("exportar")
-        # En el orden del bloque, el mismo de las pestañas de la hoja.
-        self.assertEqual(list(exportado["conteos"]), PESTANAS)
-        self.assertEqual(list(exportado["pestanas"]), PESTANAS)
-        for pestana in PESTANAS:
-            with self.subTest(pestana=pestana):
-                filas = [[f[c] for c in self.columnas[pestana]] for f in self.leer(pestana)]
-                ultima = chr(ord("A") + len(self.columnas[pestana]) - 1)
-                self.assertEqual(exportado["conteos"][pestana], len(busqueda[pestana]))
-                self.assertEqual(exportado["pestanas"][pestana],
-                                 {"rango": f"{pestana}!A2:{ultima}{len(filas) + 1}", "filas": filas})
-        # informes lleva solo los IDs: las columnas calculadas son las fórmulas de la hoja.
-        self.assertEqual(exportado["pestanas"]["informes"]["rango"], "informes!A2:C2")
-
-    def test_un_valor_que_la_hoja_interpretaria_lleva_un_apostrofo_delante(self):
-        # 11/REG-HOJA, «Valores que la hoja interpretaría». Un «-» inicial o un «=» interior se quedan como están.
-        busqueda = busqueda_ficticia()
-        motivos = {"=1+1": "'=1+1", "+1 página": "'+1 página", "'Apply now' activo": "''Apply now' activo",
-                   "- sin fecha": "- sin fecha", "Botón = activo": "Botón = activo"}
-        busqueda["observaciones"] += [dict(busqueda["observaciones"][0], observacion_id=f"OBS-000{n}", motivo=m)
-                                      for n, m in enumerate(motivos, 3)]
-        self.ok("agregar", entrada=busqueda)
-        columna = self.columnas["observaciones"].index("motivo")
-        exportados = [f[columna] for f in self.ok("exportar")["pestanas"]["observaciones"]["filas"]]
-        # Después de las dos observaciones de busqueda_ficticia.
-        self.assertEqual(exportados[2:], list(motivos.values()))
-
-    def test_con_salida_va_a_un_archivo_con_cada_fila_en_su_propia_linea(self):
-        self.ok("agregar", entrada=busqueda_ficticia())
-        salida = self.dir / "exportacion.json"
-        r = self.correr("exportar", "--salida", str(salida))
-        self.assertEqual((r.returncode, r.stdout), (0, ""), r.stderr)
-        texto = salida.read_text(encoding="utf-8")
-        self.assertEqual(json.loads(texto), self.ok("exportar"))
-        lineas = [linea.strip().rstrip(",") for linea in texto.splitlines()]
-        for pestana, exportada in json.loads(texto)["pestanas"].items():
-            for fila in exportada["filas"]:
-                with self.subTest(pestana=pestana, fila=fila[0]):
-                    self.assertIn(json.dumps(fila, ensure_ascii=False), lineas)
-
-    def test_una_salida_que_no_se_puede_escribir_falla_con_un_mensaje_claro(self):
-        r = self.correr("exportar", "--salida", str(self.dir / "no_existe" / "exportacion.json"))
-        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
-        self.assertIn("no_existe", r.stderr)
-        self.assertNotIn("Traceback", r.stderr)
-
-    def test_un_archivo_sin_filas_da_conteos_en_cero_y_sin_rango(self):
-        exportado = self.ok("exportar")
-        self.assertEqual(exportado["conteos"], dict.fromkeys(PESTANAS, 0))
-        self.assertEqual(exportado["pestanas"], dict.fromkeys(PESTANAS, {"rango": None, "filas": []}))
-
-
 def hoy():
     """La fecha de hoy en la zona horaria del 04 ficticio (UTC), la que usa el comando informe."""
     return dt.datetime.now(dt.timezone.utc).date()
@@ -361,19 +302,7 @@ class Informe(CopiaFicticia):
         super().setUp()
         self.ok("crear")
 
-    def test_las_filas_de_prueba_de_11_dan_los_valores_que_documenta_reg_validacion(self):
-        modulo = (RAIZ / "11_ESQUEMAS_DE_REGISTROS.md").read_text(encoding="utf-8")
-        bloque = re.search(r"^## REG-ESQUEMA.*?^```json\n(.*?)^```", modulo, re.M | re.S).group(1)
-        self.ok("agregar", entrada={p["nombre"]: [p["prueba"]] for p in json.loads(bloque)["pestanas"]})
-        dias = (hoy() - dt.date(2026, 1, 5)).days
-        self.assertEqual(self.ok("informe", "PRUEBA-BUS-0001"), [{
-            "busqueda_id": "PRUEBA-BUS-0001", "vacante_id": "PRUEBA-VAC-0001", "evaluacion_id": "PRUEBA-EVA-0001",
-            "empresa": "PRUEBA", "vacante": "000123 — Puesto de prueba", "encaje": "★★★☆☆ · 3/4, 1 solo académico",
-            "antiguedad": f"{dias} d · antigua",
-            "alertas": "Insuficiente: Núcleo B · Académica: Núcleo C · Pendiente: remoto",
-            "url_oficial": "https://example.com/empleo/000123"}])
-
-    def test_la_tabla_de_una_busqueda_sigue_las_formulas_de_informes(self):
+    def test_la_tabla_de_una_busqueda_calcula_las_columnas_de_informes(self):
         def vacante(n, job_id, publicada, detectada, url=""):
             return {"vacante_id": f"VAC-000{n}", "empresa_id": "EMP-XA", "job_id": job_id, "titulo": f"Puesto {n}",
                     "url_oficial": url, "region_relacionada": "Dentro", "fecha_publicacion": publicada,
@@ -394,7 +323,7 @@ class Informe(CopiaFicticia):
         busqueda["busquedas"].append(dict(busqueda["busquedas"][0], busqueda_id="BUS-0002", fecha_hora=hace(0)))
         busqueda["vacantes"] += [
             vacante(3, "R-3", hace(25), hace(3), "https://example.com/empleo/R-3"),
-            # La fórmula compara sin distinguir mayúsculas: también es «sin Job ID».
+            # Sin distinguir mayúsculas: también es «sin Job ID».
             vacante(4, "no publicado", "", hace(3)),
             vacante(5, "", "", hace(0)),
             vacante(6, "R-6", hace(20), hace(0)),
@@ -448,15 +377,49 @@ class Informe(CopiaFicticia):
                     self.assertIn(t, r.stderr)
                 self.assertNotIn("Traceback", r.stderr)
 
-    def test_el_umbral_de_antigua_sale_de_la_formula_del_bloque(self):
-        modulo = self.dir / "11_ESQUEMAS_DE_REGISTROS.md"
+    def test_el_umbral_de_antigua_sale_de_eval_acuerdos_en_08(self):
+        modulo = self.dir / "08_EVALUACION_DE_VACANTES.md"
         texto = modulo.read_text(encoding="utf-8")
-        self.assertEqual(texto.count("n>=20,"), 1)
-        modulo.write_text(texto.replace("n>=20,", "n>=30,"), encoding="utf-8")
+        linea = "- **Marca «antigua»:** a partir de 20 días publicada"
+        self.assertEqual(texto.count(linea), 1)
         busqueda = busqueda_ficticia()
         busqueda["vacantes"][0].update(fecha_publicacion=hace(25), primera_deteccion=hace(0))
         self.ok("agregar", entrada=busqueda)
-        self.assertEqual(self.ok("informe", "BUS-0001")[0]["antiguedad"], "25 d")
+        self.assertEqual(self.ok("informe", "BUS-0001")[0]["antiguedad"], "25 d · antigua")
+        # En cifras, con negritas o sin ellas.
+        for nueva in ("a partir de 30 días", "a partir de **30 días**"):
+            with self.subTest(nueva=nueva):
+                modulo.write_text(texto.replace(linea, linea.replace("a partir de 20 días", nueva)), encoding="utf-8")
+                self.assertEqual(self.ok("informe", "BUS-0001")[0]["antiguedad"], "25 d")
+        self.ok("instantanea")
+        self.assertIn("- **antigüedad:** 25 d\n", (self.dir / "instantanea" / "vacantes.md").read_text(encoding="utf-8"))
+
+    def test_sin_acuerdo_en_08_el_umbral_es_de_20_dias(self):
+        modulo = self.dir / "08_EVALUACION_DE_VACANTES.md"
+        texto = modulo.read_text(encoding="utf-8")
+        modulo.write_text(re.sub(r"^- \*\*Marca «antigua»:\*\*.*\n", "", texto, count=1, flags=re.M), encoding="utf-8")
+        busqueda = busqueda_ficticia()
+        busqueda["vacantes"][0].update(fecha_publicacion=hace(20), primera_deteccion=hace(0))
+        self.ok("agregar", entrada=busqueda)
+        self.assertEqual(self.ok("informe", "BUS-0001")[0]["antiguedad"], "20 d · antigua")
+
+    def test_un_umbral_sin_numero_en_08_dice_donde_corregirlo(self):
+        self.ok("agregar", entrada={"busquedas": busqueda_ficticia()["busquedas"]})
+        modulo = self.dir / "08_EVALUACION_DE_VACANTES.md"
+        texto = modulo.read_text(encoding="utf-8")
+        modulo.write_text(texto.replace("a partir de 20 días publicada", "a partir de veinte días publicada", 1),
+                          encoding="utf-8")
+        # Las escrituras también la necesitan, para la instantánea: no escriben nada.
+        otra = {"busquedas": [dict(busqueda_ficticia()["busquedas"][0], busqueda_id="BUS-0002")]}
+        for argumentos, entrada in ((("informe", "BUS-0001"), None), (("agregar",), otra)):
+            with self.subTest(orden=argumentos[0]):
+                antes = self.archivo.read_bytes()
+                r = self.correr(*argumentos, entrada=entrada)
+                self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+                for t in ("08_EVALUACION_DE_VACANTES.md", "EVAL-ACUERDOS", "Marca «antigua»"):
+                    self.assertIn(t, r.stderr)
+                self.assertNotIn("Traceback", r.stderr)
+                self.assertEqual(self.archivo.read_bytes(), antes)
 
 
 class Instantanea(CopiaFicticia):
