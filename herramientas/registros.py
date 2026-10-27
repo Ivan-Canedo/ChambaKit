@@ -7,6 +7,7 @@ Uso, con el Python del entorno virtual de la copia (en Windows, .venv\\Scripts\\
     .venv/bin/python -I herramientas/registros.py actualizar [CAMBIOS.json]
     .venv/bin/python -I herramientas/registros.py leer PESTAÑA [--id ID ...] [--columna COLUMNA]
     .venv/bin/python -I herramientas/registros.py informe BUS-ID
+    .venv/bin/python -I herramientas/registros.py instantanea
     .venv/bin/python -I herramientas/registros.py exportar [--salida ARCHIVO.json]
 
 El archivo es <hoja.nombre>.xlsx en la raíz de la copia, con las pestañas del bloque de 11/REG-ESQUEMA y
@@ -21,6 +22,10 @@ sus columnas guardadas: las calculadas de informes no se guardan, las da la orde
 - leer: las filas de una pestaña, o solo las que tienen esos IDs en la primera columna o en --columna.
 - informe: la tabla resumen de una búsqueda (08/EVAL-INFORME), con las columnas calculadas como las
   darían las fórmulas de informes hoy, en la zona horaria de 04.
+- instantanea: regenera completa la instantánea que lee el canal Web (11/REG-INSTANTANEA), en instantanea/:
+  informes.md, con las últimas 10 búsquedas y su tabla resumen, y vacantes.md, con una sección por vacante
+  evaluada cuya última observación no es Cerrada. Agregar y actualizar la regeneran después de escribir. Si
+  pasa de 300 KB, lo avisa en stderr sin fallar.
 - exportar: todas las pestañas, para pasarlas a la hoja de Google (`/configurar`, «De modo local a la
   hoja»): las filas de cada una como listas en el orden de sus columnas, el rango de la hoja donde van y
   cuántas son. Un valor que empieza con «=», «+» o «'» lleva un apóstrofo delante, para que la hoja no lo
@@ -44,6 +49,9 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODULO_04 = os.path.join(RAIZ, "04_PREFERENCIAS_LABORALES.md")
 MODULO_06 = os.path.join(RAIZ, "06_EMPRESAS_OBJETIVO.md")
 MODULO_11 = os.path.join(RAIZ, "11_ESQUEMAS_DE_REGISTROS.md")
+CARPETA_INSTANTANEA = "instantanea"
+ULTIMAS_BUSQUEDAS = 10
+AVISO_INSTANTANEA_KB = 300
 
 
 def error(mensaje):
@@ -320,6 +328,7 @@ def agregar(esquema, entrada):
     errores = comprobar(esquema, todas, revisar)
     if errores:
         rechazar(errores)
+    vistas = instantanea(esquema, todas)
     for nombre, filas in nuevas.items():
         pestana = libro[nombre]
         for fila in filas:
@@ -327,6 +336,7 @@ def agregar(esquema, entrada):
             for i, valor in enumerate(fila.values(), 1):
                 escribir(pestana.cell(numero, i), valor)
     guardar(libro, ruta_archivo(esquema))
+    guardar_instantanea(vistas)
     return {"agregadas": {nombre: len(filas) for nombre, filas in nuevas.items()}}
 
 
@@ -354,6 +364,7 @@ def actualizar(esquema, entrada):
     errores += comprobar(esquema, todas, revisar)
     if errores:
         rechazar(errores)
+    vistas = instantanea(esquema, todas)
     for nombre, filas in cambios.items():
         pestana = libro[nombre]
         columnas = encabezados(pestana_del_esquema(esquema, nombre))
@@ -362,6 +373,7 @@ def actualizar(esquema, entrada):
             for columna, valor in cambio.items():
                 escribir(pestana.cell(numero, columnas.index(columna) + 1), valor)
     guardar(libro, ruta_archivo(esquema))
+    guardar_instantanea(vistas)
     return {"actualizadas": {nombre: len(filas) for nombre, filas in cambios.items()}}
 
 
@@ -454,20 +466,18 @@ def calculadas(vacante, evaluacion, hoy, umbral):
     return de_la_vacante | de_la_evaluacion
 
 
-def informe(esquema, busqueda_id):
-    """La tabla resumen de una búsqueda (08/EVAL-INFORME): sus filas de informes, en su orden, con las
-    columnas calculadas como las daría la hoja hoy."""
-    filas = abrir(esquema)[1]
-    if not any(f["busqueda_id"] == busqueda_id for f in filas["busquedas"]):
-        error(f"{busqueda_id} no existe en busquedas.")
-    hoy = dt.datetime.now(leer_zona_horaria()).date()
-    umbral = umbral_de_antigua(esquema)
-    vacantes = {}
-    for v in filas["vacantes"]:
-        vacantes.setdefault(v["vacante_id"], v)
-    evaluaciones = {}
-    for e in filas["evaluaciones"]:
-        evaluaciones.setdefault(e["evaluacion_id"], e)
+def primeras(filas, columna):
+    """{ID: fila}, con la primera fila de cada ID, como la búsqueda por ID de las fórmulas."""
+    por_id = {}
+    for f in filas:
+        por_id.setdefault(f[columna], f)
+    return por_id
+
+
+def tabla_resumen(esquema, filas, busqueda_id, hoy, umbral):
+    """Las filas de informes de una búsqueda, en su orden, con sus columnas calculadas a la fecha hoy."""
+    vacantes = primeras(filas["vacantes"], "vacante_id")
+    evaluaciones = primeras(filas["evaluaciones"], "evaluacion_id")
     columnas = [c["nombre"] for c in pestana_del_esquema(esquema, "informes")["columnas"]]
     tabla = []
     for f in filas["informes"]:
@@ -475,6 +485,147 @@ def informe(esquema, busqueda_id):
             fila = f | calculadas(vacantes.get(f["vacante_id"]), evaluaciones.get(f["evaluacion_id"]), hoy, umbral)
             tabla.append({c: fila[c] for c in columnas})
     return tabla
+
+
+def informe(esquema, busqueda_id):
+    """La tabla resumen de una búsqueda (08/EVAL-INFORME): sus filas de informes, en su orden, con las
+    columnas calculadas como las daría la hoja hoy."""
+    filas = abrir(esquema)[1]
+    if not any(f["busqueda_id"] == busqueda_id for f in filas["busquedas"]):
+        error(f"{busqueda_id} no existe en busquedas.")
+    hoy = dt.datetime.now(leer_zona_horaria()).date()
+    return tabla_resumen(esquema, filas, busqueda_id, hoy, umbral_de_antigua(esquema))
+
+
+def codificar(url, signos):
+    """La URL con esos signos como %XX, para que no corten una liga ni una celda de tabla."""
+    return re.sub(f"[{re.escape(signos)}]", lambda m: f"%{ord(m.group()):02X}", url)
+
+
+def md(valor):
+    """Un valor de los registros como texto de la instantánea: en una línea, con los signos de Markdown escapados
+    y cada URL como autoliga, para que se lea literal y pase markdownlint. La puntuación que sigue a una URL
+    queda fuera de la liga."""
+    texto = []
+    for i, parte in enumerate(re.split(r"(https?://\S+?)(?=[.,;:!?)»]*(?:\s|$))", " ".join(valor.split()))):
+        if i % 2:
+            texto.append(f"<{codificar(parte, '<>|')}>")
+        else:
+            texto.append(re.sub(r"([\\`*_\[\]<>|#~])", r"\\\1", parte))
+    return "".join(texto)
+
+
+def liga(texto, url):
+    """[texto](url), o solo el texto si no hay URL."""
+    if not url.startswith(("http://", "https://")):
+        return md(texto)
+    return f"[{md(texto)}]({codificar(url, '()<>| ')})"
+
+
+def campos(fila, sin=()):
+    """Las columnas con valor de una fila, una por renglón de lista."""
+    return [f"- **{c}:** {md(v)}" for c, v in fila.items() if v and c not in sin]
+
+
+def vista_informes(esquema, filas, encabezado, hoy, umbral):
+    """informes.md: las últimas búsquedas, la más reciente primero, con su fila de busquedas y su tabla resumen."""
+    busquedas = sorted(filas["busquedas"], key=lambda b: (b["fecha_hora"], b["busqueda_id"]), reverse=True)
+    ultimas = busquedas[:ULTIMAS_BUSQUEDAS]
+    lineas = ["# Instantánea: informes", "", encabezado, "",
+              f"Búsquedas: las últimas {len(ultimas)} de {len(busquedas)}, la más reciente primero, cada una con su "
+              "fila de `busquedas` y su tabla resumen (08/EVAL-INFORME)."]
+    for b in ultimas:
+        lineas += ["", f"## {b['busqueda_id']} · {md(b['fecha_hora'])}", ""]
+        lineas += campos({c: b[c] for c in ("solicitud_alcance", "cobertura_limitaciones", "no_revisado_pendientes",
+                                             "comparacion_anterior")})
+        tabla = tabla_resumen(esquema, filas, b["busqueda_id"], hoy, umbral)
+        if not tabla:
+            lineas += ["", "Sin vacantes evaluadas en `informes`."]
+            continue
+        lineas += ["", "| Vacante | Encaje | Antigüedad | Alertas |", "| --- | --- | --- | --- |"]
+        lineas += [f"| {liga(f['vacante'], f['url_oficial'])} | {md(f['encaje'])} | {md(f['antiguedad'])} "
+                   f"| {md(f['alertas'])} |" for f in tabla]
+    return "\n".join(lineas) + "\n"
+
+
+def vista_vacantes(filas, encabezado, hoy, umbral):
+    """vacantes.md: una sección autocontenida por vacante evaluada cuya última observación no es Cerrada."""
+    observaciones = primeras(filas["observaciones"], "observacion_id")
+    ultima_evaluacion = {e["vacante_id"]: e for e in filas["evaluaciones"]}
+    requisitos = {}
+    for r in filas["habilidades_vacante"]:
+        requisitos.setdefault(r["observacion_id"], []).append(r)
+    secciones = []
+    for v in filas["vacantes"]:
+        evaluacion = ultima_evaluacion.get(v["vacante_id"])
+        observacion = observaciones.get(v["ultima_observacion_id"])
+        if evaluacion is None or v["duplicado_de"] or (observacion and observacion["estado_vigencia"] == "Cerrada"):
+            continue
+        job_id = "sin Job ID" if v["job_id"].casefold() in ("", "no publicado") else v["job_id"]
+        seccion = [f"## {v['vacante_id']} · {md(job_id)} · {v['empresa_id']} · «{md(v['titulo'])}»", ""]
+        seccion += campos(v, sin=("vacante_id",)) + [f"- **antigüedad:** {md(antiguedad(v, hoy, umbral))}"]
+        if observacion:
+            seccion += ["", f"### Última observación: {observacion['observacion_id']}", ""]
+            seccion += campos(observacion, sin=("observacion_id", "vacante_id"))
+        seccion += ["", f"### Última evaluación: {evaluacion['evaluacion_id']}", ""]
+        seccion += campos(evaluacion, sin=("evaluacion_id", "vacante_id"))
+        # Una fila por frase literal: «Python or R» junta sus dos términos y conserva la alternativa.
+        grupos = {}
+        for r in requisitos.get(evaluacion["observacion_id"], []):
+            normalizados, tipos = grupos.setdefault(r["habilidad_literal"], ([], []))
+            for lista, valor in ((normalizados, r["habilidad_normalizada"]), (tipos, r["tipo_requisito"])):
+                if valor and valor not in lista:
+                    lista.append(valor)
+        seccion += ["", f"### Requisitos de {evaluacion['observacion_id']}", ""]
+        if grupos:
+            seccion += ["| Frase literal | Normalizados | Tipo |", "| --- | --- | --- |"]
+            seccion += [f"| {md(literal)} | {md('; '.join(normalizados)) or '—'} | {md('; '.join(tipos))} |"
+                        for literal, (normalizados, tipos) in grupos.items()]
+        else:
+            seccion.append("Sin requisitos registrados.")
+        secciones.append("\n".join(seccion))
+    lineas = ["# Instantánea: vacantes evaluadas", "", encabezado, "",
+              f"Vacantes: {len(secciones)}, con evaluación y cuya última observación no es `Cerrada`. Cada una trae sus "
+              "campos de `vacantes`, su última observación, su última evaluación y los requisitos de la observación "
+              "evaluada, agrupados por frase literal. No están las vacantes sin evaluación, el historial de "
+              "observaciones ni `documentos`."]
+    return "\n\n".join(["\n".join(lineas)] + secciones) + "\n"
+
+
+def instantanea(esquema, filas):
+    """Las dos vistas de la instantánea (11/REG-INSTANTANEA), {archivo: texto}, desde todas las filas. Se arman
+    antes de guardar el archivo de registros: si falta lo que piden, como la zona horaria de 04, no se escribe nada."""
+    ahora = dt.datetime.now(leer_zona_horaria())
+    umbral = umbral_de_antigua(esquema)
+    encabezado = (f"**Exportada:** {ahora:%Y-%m-%d %H:%M} ({ahora.tzinfo.key}), desde "
+                  f"`{esquema['hoja']['nombre']}.xlsx`. La antigüedad está calculada a esa fecha; las demás fechas "
+                  "son las de los registros. Se regenera completa con cada escritura y no se edita a mano "
+                  "(11/REG-INSTANTANEA).")
+    return {"informes.md": vista_informes(esquema, filas, encabezado, ahora.date(), umbral),
+            "vacantes.md": vista_vacantes(filas, encabezado, ahora.date(), umbral)}
+
+
+def guardar_instantanea(vistas):
+    """Escribe cada vista completa en instantanea/ y avisa en stderr, sin fallar, si juntas pasan del límite."""
+    carpeta = os.path.join(RAIZ, CARPETA_INSTANTANEA)
+    os.makedirs(carpeta, exist_ok=True)
+    tamanos = {}
+    for nombre, texto in vistas.items():
+        ruta = os.path.join(carpeta, nombre)
+        temporal = ruta + ".tmp"
+        try:
+            with open(temporal, "w", encoding="utf-8", newline="\n") as f:
+                f.write(texto)
+            os.replace(temporal, ruta)
+        finally:
+            if os.path.exists(temporal):
+                os.remove(temporal)
+        tamanos[f"{CARPETA_INSTANTANEA}/{nombre}"] = os.path.getsize(ruta)
+    total = sum(tamanos.values())
+    if total > AVISO_INSTANTANEA_KB * 1024:
+        print(f"Aviso: la instantánea pesa {total / 1024:.0f} KB, más de {AVISO_INSTANTANEA_KB} KB; el canal Web puede no leerla "
+              "completa (11/REG-INSTANTANEA).", file=sys.stderr)
+    return {"archivos": tamanos}
 
 
 def letra(n):
@@ -546,6 +697,7 @@ def main():
     o.add_argument("pestana", metavar="PESTAÑA")
     o.add_argument("--id", nargs="+", default=[], help="solo las filas con alguno de estos IDs")
     o.add_argument("--columna", help="columna donde se buscan los IDs (por defecto, la primera)")
+    ordenes.add_parser("instantanea", help="regenera la instantánea completa que lee el canal Web")
     o = ordenes.add_parser("exportar", help="todas las pestañas, fila por fila, para pasarlas a la hoja")
     o.add_argument("--salida", metavar="ARCHIVO.json", help="archivo JSON de salida (por defecto, stdout)")
     a = ap.parse_args()
@@ -558,6 +710,8 @@ def main():
         res = actualizar(esquema, leer_entrada(a.filas))
     elif a.orden == "informe":
         res = informe(esquema, a.busqueda_id)
+    elif a.orden == "instantanea":
+        res = guardar_instantanea(instantanea(esquema, abrir(esquema)[1]))
     elif a.orden == "exportar":
         res = exportar(esquema)
     else:

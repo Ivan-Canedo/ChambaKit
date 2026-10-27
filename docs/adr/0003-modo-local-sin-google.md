@@ -1,3 +1,7 @@
+---
+status: superseded by ADR 0006
+---
+
 # Dos lugares para los registros: hoja de Google o archivo local
 
 Los registros viven en una hoja de Google que el agente crea con el conector. Si el titular no puede o no quiere conectar Google, la copia trabaja en modo local: los registros van a un archivo `.xlsx` dentro de la copia y todo se hace desde el canal Code. Antes de elegirlo, el agente advierte que en modo local el canal Web no funciona, porque un proyecto de claude.ai no puede leer ni escribir ese archivo.

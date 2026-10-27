@@ -1,6 +1,6 @@
 # 01 — Mapa y estado del proyecto
 
-**Versión:** 1.2 — 2026-10-18 — El canal Code es cualquier agente con terminal sobre la copia.
+**Versión:** 1.3 — 2026-10-26 — El inventario lista la instantánea (`instantanea/`).
 
 ## ESTADO — Punto de continuidad
 
@@ -20,7 +20,7 @@
 | 08 Evaluación | 1.1 | Sin llenar | `/configurar`, paso 5 (Habilidades y roles): queda listo con las condiciones de 04 y las familias de 05 |
 | 09 Generación de CV | 1.1 | Sin llenar | `/configurar`, paso 6 (CV base): color del CV |
 | 10 Tendencias | 1.0 | Sin llenar | `/configurar`, paso 8 (Registros): queda listo cuando existen los registros |
-| 11 Esquema de registros | 1.1 | Sin llenar | `/configurar`, paso 8 (Registros): crea los registros desde este esquema |
+| 11 Esquema de registros | 1.2 | Sin llenar | `/configurar`, paso 8 (Registros): crea los registros desde este esquema |
 
 **Orden sugerido:**
 
@@ -51,6 +51,7 @@ La numeración no impone orden.
 | 10_ANALISIS_DE_TENDENCIAS.md | Reglas de tendencias | Método |
 | 11_ESQUEMAS_DE_REGISTROS.md | Esquema de los registros, con su bloque (REG-ESQUEMA), y cómo se crean la hoja y el archivo local | Esquema de datos |
 | Registros: hoja de Google `ChambaKit_Registros` o, en modo local, `ChambaKit_Registros.xlsx` (00, «Registros») | Pestañas vacantes, observaciones, habilidades_vacante, documentos, busquedas, evaluaciones e informes; la hoja, vinculada desde Drive | **Datos operativos** |
+| `instantanea/`: `informes.md` y `vacantes.md` | Copia en Markdown de los registros para el canal Web: las últimas 10 búsquedas con su tabla resumen y las vacantes evaluadas no cerradas. La regenera la herramienta de 11/REG-LOCAL con cada escritura; la plantilla no la trae | Vista, nunca se edita a mano (11/REG-INSTANTANEA) |
 
 ## OPERACIONES — Qué consultar
 

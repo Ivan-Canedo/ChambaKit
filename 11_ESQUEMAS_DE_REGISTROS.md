@@ -1,6 +1,6 @@
 # 11 — Esquema de registros
 
-**Versión:** 1.1 — 2026-10-18 — Habla de «el agente»; la hoja necesita Claude.
+**Versión:** 1.2 — 2026-10-26 — La herramienta del archivo local regenera la instantánea con cada escritura (REG-INSTANTANEA).
 **Estado:** esquema de la plantilla. El paso 8 de `/configurar` (Registros) crea la hoja o el archivo local desde el bloque de REG-ESQUEMA.
 
 ## Responsabilidad
@@ -473,11 +473,25 @@ El archivo `ChambaKit_Registros.xlsx` (el `nombre` del bloque) está en la raíz
 En Windows, el Python es `.venv\Scripts\python.exe`. `--help` da las órdenes y la forma de su entrada, que va por stdin o en un archivo del directorio temporal de la sesión, nunca de la copia.
 
 - **Creación:** `crear`, desde el bloque, en el paso 8 de `/configurar`. Lleva las pestañas y columnas del bloque, salvo las calculadas de `informes`, que no se guardan. No necesita la comprobación con filas `prueba` de REG-VALIDACION: la validación está en la herramienta, y sus pruebas automáticas la cubren.
-- **Escritura:** `agregar` y `actualizar` comprueban cada fila que escriben contra el bloque: lo mismo que valida la hoja, más la obligatoriedad, y las referencias rechazan en lugar de solo marcar. Si una fila no cumple, no escriben ninguna y dicen qué corregir. Solo comprueban las filas que escriben: un cambio no vuelve a comprobar las filas que citan a la cambiada. Las referencias se resuelven contra lo ya registrado más lo de la misma llamada, así que una búsqueda se registra en dos llamadas (07/BUS-REGISTRO): `agregar` con todas sus filas nuevas, de todas las pestañas, y `actualizar` con los cambios a las filas ya registradas.
+- **Escritura:** `agregar` y `actualizar` comprueban cada fila que escriben contra el bloque: lo mismo que valida la hoja, más la obligatoriedad, y las referencias rechazan en lugar de solo marcar. Si una fila no cumple, no escriben ninguna y dicen qué corregir. Solo comprueban las filas que escriben: un cambio no vuelve a comprobar las filas que citan a la cambiada. Las referencias se resuelven contra lo ya registrado más lo de la misma llamada, así que una búsqueda se registra en dos llamadas (07/BUS-REGISTRO): `agregar` con todas sus filas nuevas, de todas las pestañas, y `actualizar` con los cambios a las filas ya registradas. Después de escribir, las dos regeneran la instantánea (REG-INSTANTANEA); si rechazan la entrada, no la tocan. `instantanea` la regenera a pedido, por ejemplo si alguien la borró o la editó.
 - **Lectura:** `leer` da una pestaña completa o las filas de unos IDs. `informe` da la tabla resumen de una búsqueda: sus filas de `informes` con las columnas calculadas, con la lógica de las fórmulas del bloque y la fecha de hoy en la zona horaria de 04. `exportar` da todas las pestañas a la vez, fila por fila y con el rango de la hoja donde van, para el cambio a la hoja (REG-HOJA); los valores que la hoja interpretaría ya llevan su `'` delante.
 - **Encabezados:** la herramienta los compara con el bloque en cada uso y se detiene si no coinciden (REG-DECISIONES, «Encabezados»).
 - **Historial y respaldo:** git. El archivo se versiona en la copia, así que no se ignora. Al cerrar una sesión que lo modificó, el agente le ofrece al titular un commit con él y, si la copia tiene remoto privado, el push.
 - **Edición a mano:** el titular puede abrir el archivo en una hoja de cálculo para consultarlo. Las filas se escriben con la herramienta, que es la que las comprueba.
+
+## REG-INSTANTANEA — Instantánea para el canal Web
+
+La copia en Markdown del archivo local que lee el canal Web: la carpeta `instantanea/` de la copia, con dos vistas. Es una vista, no una autoridad: manda el archivo.
+
+- **`informes.md`:** las últimas 10 búsquedas, la más reciente primero. Cada una lleva su fila de `busquedas` (alcance, cobertura, pendientes y comparación) y su tabla resumen con el formato de 08/EVAL-INFORME, con las columnas calculadas de `informes`.
+- **`vacantes.md`:** una sección por cada vacante con evaluación cuya última observación no es `Cerrada`, salvo las filas absorbidas por una fusión (`duplicado_de`, REG-IDENTIDAD). El encabezado lleva el `VAC-` ID, el Job ID, el `empresa_id` y el título, para encontrarla aunque solo llegue un fragmento. Debajo van sus campos de `vacantes` y su antigüedad, su última observación, su última evaluación registrada y los requisitos de la observación evaluada. Los requisitos van agrupados por frase literal, con sus términos normalizados y su tipo, así que «Python or R» sigue siendo una alternativa.
+- **Qué no trae:** las vacantes sin evaluación, el historial de observaciones y `documentos`.
+- **Fecha:** el encabezado de cada vista lleva la fecha y hora de exportación, en la zona horaria de 04. La antigüedad está calculada a esa fecha, no a la de la lectura.
+- **Cuándo se regenera:** completa, cada vez que la herramienta escribe en el archivo (REG-LOCAL), y a pedido con `instantanea`. Se arma antes de guardar el archivo: si no se puede, como cuando falta la zona horaria de 04, la herramienta tampoco escribe las filas.
+- **Nunca se edita a mano:** la siguiente escritura la reemplaza completa. Para corregir un dato, se corrige el archivo con la herramienta.
+- **Tamaño:** si pasa de 300 KB, la herramienta lo avisa en stderr sin fallar, para recortarla antes de que el canal Web deje de leerla completa.
+- **Formato:** pasa markdownlint; los textos de los registros van escapados y las URL como autoliga.
+- **En git:** se versiona en la copia junto con el archivo, en el mismo commit. La plantilla no trae la carpeta: la crea la primera escritura en una copia.
 
 ## REG-DECISIONES — Decisiones del esquema
 

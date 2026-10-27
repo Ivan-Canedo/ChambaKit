@@ -31,20 +31,26 @@ _Avoid_: migración, sincronización, merge
 ## Uso
 
 **Canal**:
-Dónde se usa ChambaKit: Code (un agente con terminal sobre la copia, sea Claude Code, Antigravity u otro) o Web (un proyecto de claude.ai). Los separa si se llega a los portales y a los scripts, no qué agente se usa.
+Dónde se usa ChambaKit: Code (un agente con terminal sobre la copia, sea Claude Code, Antigravity u otro) o Web (un proyecto de claude.ai). Los separa si se llega a los portales y a los scripts, no qué agente se usa. Solo Code hace búsquedas y escribe los registros; Web consulta y hace comprobaciones puntuales.
 _Avoid_: modo, entorno, Local
 
 **Agente**:
-El asistente de IA que trabaja con el titular. En el canal Code puede ser cualquiera con terminal; en el canal Web y con la hoja de registros, solo Claude.
+El asistente de IA que trabaja con el titular. En el canal Code puede ser cualquiera con terminal; en el canal Web, solo Claude.
 _Avoid_: Claude, cuando se habla del canal Code
 
-**Hoja de registros**:
-La hoja de Google donde viven las búsquedas, vacantes, observaciones, evaluaciones y documentos del titular.
-_Avoid_: base de datos, spreadsheet
+## Registros
 
-**Modo local**:
-La forma de usar ChambaKit sin conectar Google: los registros viven en un archivo de la copia y solo funciona el canal Code. Es la única forma de usar ChambaKit con un agente que no es Claude.
-_Avoid_: modo offline, sin conexión
+**Archivo de registros**:
+El archivo de la copia donde viven las búsquedas, vacantes, observaciones, evaluaciones y documentos del titular. Es la única fuente de verdad, y solo lo escribe el canal Code.
+_Avoid_: modo local, hoja de registros, base de datos
+
+**Instantánea**:
+La copia en texto del archivo de registros que lee el canal Web. Se regenera completa desde el archivo y nunca se edita a mano.
+_Avoid_: export, réplica, snapshot, hoja
+
+**Nota para Code**:
+Lo que deja un chat del canal Web cuando algo debe cambiar en un módulo o en los registros, para que el canal Code lo aplique en la copia.
+_Avoid_: pendiente, parche
 
 ## Búsqueda
 
@@ -55,3 +61,11 @@ _Avoid_: ATS, portal
 **Adaptador**:
 La parte del script de búsqueda que sabe leer una plataforma de reclutamiento; cada empresa que la usa solo aporta su configuración.
 _Avoid_: adaptador por empresa, scraper
+
+**Búsqueda**:
+Recorrer el listado de vacantes de una o varias empresas en sus portales, filtrarlas, evaluarlas y registrarlas. Solo se hace en el canal Code.
+_Avoid_: comprobación, consulta
+
+**Comprobación puntual**:
+Leer el anuncio oficial de una vacante, o de unas pocas que el titular nombra, sin recorrer ningún listado. Se hace en cualquier canal; desde Web, lo que se quiera conservar va en una nota para Code.
+_Avoid_: búsqueda, verificación
