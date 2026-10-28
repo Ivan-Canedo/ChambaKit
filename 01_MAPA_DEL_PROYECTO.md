@@ -4,7 +4,7 @@
 
 ## ESTADO — Punto de continuidad
 
-**Versión de la plantilla:** 1.1, de <https://github.com/Ivan-Canedo/ChambaKit> — la de ChambaKit de la que salió esta copia o a la que se actualizó por última vez. En la copia, solo `/actualizar` la cambia.
+**Versión de la plantilla:** 2.0, de <https://github.com/Ivan-Canedo/ChambaKit> — la de ChambaKit de la que salió esta copia o a la que se actualizó por última vez. En la copia, solo `/actualizar` la cambia.
 
 **Estados:** «Sin llenar» espera el paso de `/configurar` que nombra su fila; «Configurado» ya lo pasó.
 
