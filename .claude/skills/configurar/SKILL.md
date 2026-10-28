@@ -9,17 +9,17 @@ Lleva al titular de una copia recién creada a una copia lista para usar, un pas
 
 Si `git config --local --get chambakit.mantenedor` da `true`, esta carpeta es la plantilla: detente y dile al mantenedor que pruebe en un clon temporal (`CONTRIBUTING.md`).
 
-La hoja de Google y el proyecto web necesitan Claude Code; con otro agente, la copia usa el modo local (ADR 0005). Decide cada vez que haga falta si eres Claude Code y no anotes qué agente usa el titular: puede cambiarlo. En los comandos, `<directorio temporal>` es el directorio temporal de la sesión o, si no tienes uno, el del sistema; nunca esta carpeta.
+Cualquier agente con terminal configura la copia completa. No anotes qué agente usa el titular: puede cambiarlo. En los comandos, `<directorio temporal>` es el directorio temporal de la sesión o, si no tienes uno, el del sistema; nunca esta carpeta.
 
 ## Cómo avanzar
 
 1. Corre los pasos 1 y 2 en cada invocación: son revisiones rápidas, y el remoto o el equipo pueden haber cambiado desde la última sesión.
-2. Sigue con el primer paso, en el orden de esta skill, que nombre una fila «Sin llenar» de ESTADO. Si no queda ninguna, la configuración está completa. Solo si eres Claude Code y 00 («Registros») tiene la URL de la hoja, ofrece el paso 9.
+2. Sigue con el primer paso, en el orden de esta skill, que nombre una fila «Sin llenar» de ESTADO. Si no queda ninguna, la configuración está completa: ofrece el paso 9, que no tiene fila en ESTADO.
 3. Haz un paso por vez. Al terminarlo, marca «Configurado», con su siguiente paso de uso, cada fila de ESTADO que lo nombra: la de cada módulo que el paso escribió y también la de cada módulo de método que solo deja listo, sin editarlo. Cada módulo escrito pasa markdownlint sin advertencias y se versiona según AGENTS.md («Al cerrar»). El paso termina cuando ninguna fila que lo nombra sigue «Sin llenar».
 4. Al terminar un paso, di cuál sigue y pregunta si continuar ahora o en otra sesión.
 5. **Fin de la configuración:** cuando ya no queda ninguna fila «Sin llenar» y el titular terminó o declinó lo que se ofrece en el punto 2, cierra en este orden:
    1. Un resumen corto: una línea por paso configurado.
-   2. Si esta sesión escribió el archivo del modo local, ofrece en una línea el commit de 11/REG-LOCAL («Historial y respaldo»), sin que sea la pregunta final.
+   2. Si esta sesión creó el archivo de registros, ofrece en una línea el commit de 11/REG-LOCAL («Historial y respaldo»), sin que sea la pregunta final.
    3. Como último mensaje, el siguiente paso: la primera búsqueda (07/BUS-PASOS). Recomiéndale abrir una conversación nueva en esta carpeta (en Claude Code, `/clear`) y pedir «busca vacantes en mis empresas»: la de la configuración ya trae mucho contexto que la búsqueda no necesita. Si 06 no tiene empresas, el siguiente paso es agregar una con el paso 7.
 
 ## Paso 1: Copia privada
@@ -28,7 +28,7 @@ Los módulos van a guardar datos personales del titular, así que su copia debe 
 
 1. Lista los remotos con `git remote -v`. Si la carpeta no es un repositorio de git o no tiene remotos, dilo en una línea y pasa al paso 2.
 2. Si un remoto apunta a la plantilla pública (`github.com/Ivan-Canedo/ChambaKit`, por HTTPS o SSH), el titular clonó la plantilla en lugar de crear su copia. Ofrécele dos caminos, en este orden:
-   - **Solo en su equipo:** con su permiso, quita ese remoto (`git remote remove <nombre>`). Dile en una línea que su copia queda solo en su equipo y que en el paso 8 le propones cómo respaldarla. Sigue con el punto 3.
+   - **Solo en su equipo:** con su permiso, quita ese remoto (`git remote remove <nombre>`). Dile en una línea que su copia queda solo en su equipo y que en el paso 8 le explicas su respaldo. Sigue con el punto 3.
    - **Copia en GitHub:** en la página de la plantilla, «Use this template» → «Create a new repository» con visibilidad **Private**; después clona ese repositorio y ábrelo con su agente. Detén la configuración hasta que trabaje en esa copia: al configurarla, este paso revisa su visibilidad.
 3. Revisa la visibilidad de cada remoto restante:
    - **GitHub:** `gh repo view <dueño>/<repo> --json visibility --jq .visibility`, si `gh` está instalado y con sesión. Si no, `curl -s -o /dev/null -w '%{http_code}' https://api.github.com/repos/<dueño>/<repo>`: `200` es público; `404`, privado; `000`, que el comando no llegó a la red («Comandos sin red»).
@@ -39,7 +39,7 @@ El paso termina cuando cada remoto es privado, o el titular, ya avisado, decide 
 
 ## Paso 2: Herramientas básicas
 
-Python, Node y markdownlint-cli2 sirven a todos los pasos siguientes. Las herramientas del CV y las del modo local se instalan en sus propios pasos, cuando hacen falta.
+Python, Node y markdownlint-cli2 sirven a todos los pasos siguientes. Las herramientas del CV y las del archivo de registros se instalan en sus propios pasos, cuando hacen falta.
 
 1. **Sistema:** detecta el sistema operativo con `uname -s`: `Linux`; `Darwin` es macOS; `MINGW…`, `MSYS…` o un `uname` inexistente (PowerShell) es Windows. En Linux, lee `ID` e `ID_LIKE` en `/etc/os-release`: `dnf` sirve a Fedora y derivados; `apt`, a Debian, Ubuntu y derivados. En macOS el gestor es Homebrew (`brew`) y en Windows, `winget`.
 2. **Aviso:** si el sistema no es Linux, dile al titular que ChambaKit solo se ha probado en Linux, así que un fallo puede venir de ahí.
@@ -176,35 +176,9 @@ Llena `06_EMPRESAS_OBJETIVO.md` con las empresas donde el titular quiere buscar,
 
 ## Paso 8: Registros
 
-Crea los registros del titular desde el esquema de `11_ESQUEMAS_DE_REGISTROS.md` (11/REG-LUGAR): la hoja de Google `ChambaKit_Registros`, con los conectores de Google de claude.ai, o, si el titular no los conecta, el archivo del modo local.
+Crea el archivo de registros `ChambaKit_Registros.xlsx` en la raíz de la copia (11/REG-LUGAR), que escribe y lee `herramientas/registros.py` (11/REG-LOCAL). Funciona igual con cualquier agente.
 
-Si no eres Claude Code, salta los puntos 1 y 2 y sigue directo en «Modo local»: los conectores de claude.ai solo cargan en Claude Code.
-
-1. **Conectores:** revisa si esta sesión tiene las herramientas de «claude.ai Google Drive» y «claude.ai Google Sheets», cuyos nombres llevan `Google_Drive` y `Google_Sheets`. Si tus herramientas se cargan bajo demanda, búscalas antes de concluir que faltan. Hacen falta las dos. Si están, pregúntale dónde quiere sus registros: en una hoja de su Google Drive o en un archivo de su copia (modo local). Con la hoja, sigue en «Hoja de Google»; si no, en «Modo local».
-2. **Guía para conectarlos:** si falta alguna, antes de ofrecer otra opción, dale al titular estos pasos y espera su respuesta:
-   1. En claude.ai, abre «Customize» → «Connectors» (<https://claude.ai/customize/connectors>) y selecciona «Discover».
-   2. Busca «Google Drive», abre su página y selecciona «Connect to Claude». Inicia sesión con la cuenta de Google donde quieres la hoja y aprueba el acceso. Repite con «Google Sheets». Los dos deben quedar en «Your connectors» como «Connected». En un plan Team o Enterprise, si en lugar del botón aparece «Request», un Owner de la organización tiene que agregarlos primero.
-   3. Claude Code debe tener la sesión iniciada con esa misma cuenta de claude.ai: con una clave de API no carga los conectores. `/status` muestra la cuenta; si no es esa, `/login`.
-   4. Los conectores se cargan al empezar cada conversación. Abre una conversación nueva de Claude Code en esta carpeta y escribe `/mcp`: «claude.ai Google Drive» y «claude.ai Google Sheets» deben aparecer conectados. Si no aparecen, reinicia Claude Code (en VS Code, «Developer: Reload Window» desde la paleta de comandos).
-   5. En esa conversación, escribe `/configurar`: retoma en este paso.
-
-   Si no puede o no quiere conectarlos, sigue en «Modo local».
-
-### Hoja de Google
-
-Drive crea el archivo y Sheets lo arma. La hoja queda en el Drive del titular, privada. Necesita Claude Code, por los conectores de claude.ai.
-
-1. **Crear la hoja:** sigue 11/REG-VALIDACION («Creación») con el bloque de 11/REG-ESQUEMA, la `zona_horaria` del bloque de 04/PREF-UBICACION y, para la lista de `empresa_id`, los IDs de 06/CAT-EMPRESAS.
-2. **Comprobar:** sigue REG-VALIDACION («Comprobación»), que termina borrando las filas `PRUEBA-`. Si algo no cuadra, corrígelo en la hoja y repite la comprobación; no sigas con una hoja que no la pasa.
-3. **URL:** en 00, reemplaza el marcador «pendiente…» que sigue a **Registros:** por la URL de la hoja entre `<` y `>`, que markdownlint pide para una URL suelta (`<https://docs.google.com/spreadsheets/d/…/>`). Dale el enlace al titular.
-4. **Respaldo:** si la copia no tiene un remoto privado, dile que sus registros quedan en su hoja, pero sus módulos solo en su equipo, y que el proyecto web del paso 9 guarda una réplica de ellos en su cuenta de claude.ai.
-5. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Volver a pegar en el proyecto web cada vez que cambie» para 00, «Analizar tendencias cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»); al agregar una empresa a 06, agregar su ID a la lista de `empresa_id`» para 11.
-
-### Modo local
-
-Los registros van al archivo `ChambaKit_Registros.xlsx` de la copia, que escribe y lee `herramientas/registros.py` (11/REG-LOCAL).
-
-1. **Aviso:** antes de instalar o crear nada, dile al titular que en modo local el canal Web no funciona: un proyecto de claude.ai no puede leer ni escribir ese archivo, así que búsquedas, evaluaciones y registros se hacen solo desde el canal Code: un agente con terminal en esta carpeta. El respaldo y el historial del archivo son los commits de su copia; sin un remoto privado, solo viven en su equipo: si lo pierde, pierde su copia y sus registros, y le ofreces guiarlo a un respaldo. Pídele que confirme; si no confirma, detén la configuración en este paso.
+1. **Aviso:** antes de instalar o crear nada, dile al titular que sus registros viven en ese archivo de su copia, y que su respaldo y su historial son los commits de la copia. Sin un remoto privado, solo viven en su equipo: si lo pierde, pierde su copia y sus registros. Si no tiene remoto, dile que, si conecta el canal Web en el paso 9, su copia queda también en un repositorio privado de GitHub; si no, que la respalde con un remoto privado o una copia de la carpeta.
 2. **Entorno virtual:** la herramienta usa `openpyxl`, que va en un entorno virtual dentro de la copia (`.venv/`, que git ignora), no en el Python del sistema. Muéstrale los comandos de su sistema (paso 2) y pide su permiso antes de correrlos:
 
    | Sistema | Crear el entorno | Instalar `openpyxl` | Comprobación |
@@ -214,35 +188,19 @@ Los registros van al archivo `ChambaKit_Registros.xlsx` de la copia, que escribe
 
    En Debian y Ubuntu, si crear el entorno falla por `ensurepip`, falta el paquete del sistema: `sudo apt install python3-venv`, que corre el titular (paso 2, «Instalación»). El punto termina cuando la comprobación da una versión.
 3. **Crear el archivo:** `.venv/bin/python -I herramientas/registros.py crear` (en Windows, con `.venv\Scripts\python.exe`). Su salida lista las siete pestañas de 11/REG-ESQUEMA; si dice que el archivo ya existe, no lo toques y pregúntale al titular de dónde salió.
-4. **00:** reemplaza el marcador «pendiente…» que sigue a **Registros:** por `modo local`.
-5. **Cierre:** sube la versión de 00. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Registrar desde Code con `herramientas/registros.py` (11/REG-LOCAL)» para 00, «Analizar tendencias cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»)» para 11. La configuración termina aquí, con el cierre de «Cómo avanzar» (punto 5), cuyo commit lleva el archivo nuevo y los módulos editados: el paso 9 es solo para la hoja.
+4. **Cierre:** 00 («Registros») ya nombra el archivo, así que no se edita. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Registrar desde Code con `herramientas/registros.py` (11/REG-LOCAL); si hay proyecto web, volver a pegarlo en «Instrucciones» cada vez que cambie» para 00, «Analizar tendencias en Code cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»)» para 11.
 
-## Paso 9: Proyecto web (opcional)
+## Paso 9: Canal Web (opcional)
 
-Le da al titular la lista de lo que hace en claude.ai para usar ChambaKit desde cualquier dispositivo, con el canal Web (07/BUS-CANALES). Solo se ofrece si eres Claude Code, porque la hoja que lee el proyecto vive de sus conectores, y si 00 («Registros») tiene la URL de la hoja: en modo local, o mientras 00 tenga el marcador «pendiente…», un proyecto web no tendría registros que leer ni escribir. Ninguna de tus herramientas llega a los proyectos de claude.ai: el titular hace cada paso y tú lo acompañas. Este paso no edita módulos ni ESTADO.
+Ofrece el canal Web (07/BUS-CANALES): un proyecto de claude.ai que lee los módulos y la instantánea (11/REG-INSTANTANEA) desde el repositorio privado de GitHub de la copia. La conexión la hace la skill `/conectar-web` en otra conversación, para que esta no se cargue de contexto si el titular batalla. Este paso no edita módulos ni tiene fila en ESTADO: la conexión vive fuera de la copia.
 
-1. **Oferta:** pregúntale si ya creó el proyecto. Si ya lo tiene, salta al punto 4. Si no, dile en pocas líneas qué gana y qué no:
-   - **Gana:** desde el navegador o el teléfono, ver la tabla de una búsqueda, pedir el detalle de una vacante, evaluarla, adaptar el texto de su CV y continuar búsquedas en las empresas con canal «Web y Code».
-   - **No gana:** el canal Web no edita módulos ni corre los scripts de la copia; las búsquedas completas y el archivo del CV siguen en Code.
+1. **Remoto:** revisa los remotos y su visibilidad como en el paso 1 (punto 3). Si alguno es público, no ofrezcas el canal Web: dile que la instantánea lleva sus datos personales y que se lo ofreces cuando su repositorio sea privado (paso 1, punto 4). La configuración termina con el cierre de «Cómo avanzar».
+2. **Oferta:** si ya tiene un proyecto web conectado a su repositorio, salta este paso. Si no, dile en dos frases qué gana: desde el navegador o el teléfono, ver la tabla de una búsqueda o el detalle de una vacante, evaluar una vacante que pegue y adaptar el texto de su CV. Las búsquedas, los registros y el archivo del CV siguen en Code. Pregúntale si lo quiere.
+3. **Si lo quiere,** según dónde esté su copia:
+   - **En un repositorio privado de GitHub, o solo en su equipo:** dile que abra una conversación nueva de su agente en esta carpeta, escriba `/conectar-web` y vuelva a esta conversación al terminar. Si su copia está solo en su equipo, `/conectar-web` le crea el repositorio privado y sube su copia, sin que escriba comandos de git.
+   - **Sin GitHub,** porque no quiere una cuenta o su remoto está en otro servicio: dile en dos líneas que el proyecto web solo lee repositorios de GitHub, así que puede crear un proyecto y subir a mano los módulos 01–11 y los archivos de `instantanea/`, reemplazándolos cada vez que cambien, o quedarse sin canal Web, que no le hace falta para buscar ni registrar.
 
-   Pregúntale si lo crea ahora. Si no, la configuración termina; puede pedirlo después con `/configurar`.
-2. **Lista:** dale estos pasos, con la URL de la hoja de 00, y espera a que te diga que terminó o en qué punto tuvo un problema:
-   1. **Proyecto:** en claude.ai, abre «Projects» en la barra lateral (<https://claude.ai/projects>) y selecciona «+ New Project». Ponle un nombre, como «ChambaKit». En un plan Team o Enterprise, elige «Keep it private»: el proyecto va a tener sus datos, y una hoja de Drive solo se agrega a un proyecto privado.
-   2. **Instrucciones:** selecciona «Set project instructions», pega el contenido completo de `00_INSTRUCCIONES_PROYECTO.md` y guárdalo con «Save instructions». 00 va solo en ese campo: no hace falta subirlo como archivo (01, «Inventario»).
-   3. **Módulos:** en la sección de conocimiento del proyecto, con «+» o «Add files», sube los once archivos de su copia, de `01_MAPA_DEL_PROYECTO.md` a `11_ESQUEMAS_DE_REGISTROS.md`. Nada más: lo de 01, «Fuera del proyecto», se queda en la copia.
-   4. **Hoja:** en el mismo lugar, «Add files» → «Google Drive», y pega la URL de la hoja o busca `ChambaKit_Registros`. El conector de Google Drive, con el que el paso 8 creó la hoja, ya le da acceso. El proyecto la recibe como CSV, con todas sus pestañas, y la refresca desde Drive de vez en cuando al abrirlo.
-   5. **Conector en cada chat:** al abrir un chat del proyecto, revisa en «+» → «Connectors» que «Google Sheets» esté encendido: con él Claude lee el estado actual de la hoja y escribe los registros (00, «Escritura de registros»). El interruptor vale solo para ese chat.
-   6. **Prueba:** en un chat nuevo del proyecto, con «Google Sheets» encendido, pide: «Lee la tabla ESTADO de 01 y, con el conector de Google Sheets, dime los encabezados de la pestaña `vacantes` de la hoja de registros». La respuesta debe traer la tabla de 01 y los encabezados leídos con el conector, sin pedir archivos. Si Claude pide permiso para usar el conector, «Allow once» o «Always allow».
-3. **Si algo falla:** ayúdale según lo que vea, y después repite la prueba:
-   - **«Google Drive» aparece atenuado en «Add files», con «Only accessible from private projects»:** el proyecto está compartido. Hace falta uno privado (punto 2.1).
-   - **La respuesta no trae la tabla de 01, o Claude pide archivos:** faltan los módulos en el conocimiento del proyecto (punto 2.3).
-   - **La respuesta no trae los encabezados:** «Google Sheets» está apagado en ese chat (punto 2.5), o desconectado en claude.ai. En «Customize» → «Connectors», los dos conectores deben decir «Connected»; si no, la guía del punto 2 del paso 8.
-4. **Mantenerlo al día:** explícale que el proyecto es una réplica de solo lectura de su copia (00, «Cambios a los módulos»):
-   - Cada módulo que se edite en Code se reemplaza en el proyecto: quita el archivo viejo del conocimiento y sube el nuevo. Si cambia 00, se vuelve a pegar en «Instrucciones». Claude Code se lo recuerda al cerrar cada sesión que edite un módulo (AGENTS.md, «Al cerrar»).
-   - Un cambio a un módulo que surja en un chat web no se edita ahí: queda como «nota para Code» y se aplica en la copia.
-   - La hoja no se reemplaza: el proyecto lee la misma de Drive.
-
-La configuración está completa cuando la prueba trae la tabla de 01 y los encabezados de `vacantes`, o cuando el titular ya tenía el proyecto.
+El paso termina cuando el titular vuelve de `/conectar-web`, eligió otro camino o lo declinó; puede pedirlo después con `/conectar-web`.
 
 ## Comandos sin red
 

@@ -1,6 +1,6 @@
 # 01 — Mapa y estado del proyecto
 
-**Versión:** 1.5 — 2026-10-27 — El inventario describe un solo lugar de registros, el archivo de la copia.
+**Versión:** 1.6 — 2026-10-27 — El inventario lista `/conectar-web`, que conecta el proyecto web con el repositorio privado de la copia.
 
 ## ESTADO — Punto de continuidad
 
@@ -79,7 +79,8 @@ No están en el conocimiento del proyecto. Si una sesión los necesita, hay que 
 - **`AGENTS.md` y `CLAUDE.md`:** instrucciones para el agente que trabaja esta carpeta en el canal Code, el único lugar donde se editan los módulos. `CLAUDE.md` solo remite a `AGENTS.md`.
 - **`.claude/skills/configurar/`:** la skill `/configurar`, que configura la copia paso a paso según la tabla ESTADO.
 - **`.claude/skills/actualizar/` y `CAMBIOS.md`:** la skill `/actualizar`, que lleva a la copia los cambios de una versión más nueva de la plantilla sin tocar sus datos, y la lista de lo que trae cada versión. Se invoca a mano: nada avisa al abrir la copia.
-- **`.agents/skills/`:** un puntero por skill, con su mismo nombre y descripción, que remite a la skill completa de `.claude/skills/`. Existen para que otros agentes, que leen esa carpeta y no `.claude/skills/` (Antigravity, Gemini CLI), encuentren `/configurar` y `/actualizar`; las skills se editan en `.claude/skills/` y el puntero solo cambia si cambia su nombre o su descripción.
+- **`.claude/skills/conectar-web/`:** la skill `/conectar-web`, que conecta un proyecto de claude.ai con el repositorio privado de GitHub de la copia, para que lea los módulos y la instantánea, o reconecta un proyecto que leía la hoja de Google. La ofrece el paso 9 de `/configurar`, en otra conversación.
+- **`.agents/skills/`:** un puntero por skill, con su mismo nombre y descripción, que remite a la skill completa de `.claude/skills/`. Existen para que otros agentes, que leen esa carpeta y no `.claude/skills/` (Antigravity, Gemini CLI), encuentren `/configurar`, `/actualizar` y `/conectar-web`; las skills se editan en `.claude/skills/` y el puntero solo cambia si cambia su nombre o su descripción.
 - **`.markdownlint-cli2.jsonc`:** reglas de formato Markdown que se revisan en Code tras editar (AGENTS.md).
 - **`herramientas/buscar.py`:** script de búsqueda del canal Code (07/BUS-ACCESO-CODE); no se sube al proyecto.
 - **`herramientas/generar_cv.py`:** generador y comprobador de CV del canal Code (09/CV-HERRAMIENTAS); no se sube al proyecto.
