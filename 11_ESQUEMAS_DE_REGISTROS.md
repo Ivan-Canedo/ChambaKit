@@ -1,6 +1,6 @@
 # 11 — Esquema de registros
 
-**Versión:** 1.4 — 2026-10-27 — REG-LOCAL documenta `importar`, que registra una búsqueda desde la salida de `buscar.py`.
+**Versión:** 1.5 — 2026-10-27 — REG-LOCAL documenta `migrar`, que pasa a 2.0 una hoja descargada o un archivo de registros 1.x.
 **Estado:** esquema de la plantilla. El paso 8 de `/configurar` (Registros) crea el archivo de registros desde el bloque de REG-ESQUEMA.
 
 ## Responsabilidad
@@ -392,7 +392,13 @@ En Windows, el Python es `.venv\Scripts\python.exe`. `--help` da las órdenes y 
   - `importar` registra una búsqueda desde la salida JSON de `buscar.py` y un archivo de decisiones (07/BUS-REGISTRO), sin que el agente genere sus filas. Escribe la fila de `busquedas`, con la cobertura y la comparación con la última búsqueda comparable, las vacantes nuevas y una observación por vacante listada. En las ya registradas, que identifica por REG-IDENTIDAD, actualiza los campos que cambiaron y `ultima_observacion_id`. No escribe nada si queda una línea «revisar» sin decisión o un `[FALLO]` sin declarar. Devuelve el `busqueda_id` y una lista compacta de las vacantes (ID, título y departamento).
   - `agregar` escribe filas nuevas de varias pestañas a la vez: en una búsqueda, los requisitos, las evaluaciones y `informes`, que piden juicio.
   - `actualizar` cambia columnas de filas ya registradas, por su ID.
-- **Instantánea:** las tres órdenes la regeneran después de escribir (REG-INSTANTANEA); si rechazan la entrada, no la tocan. `instantanea` la regenera a pedido, por ejemplo si alguien la borró o la editó.
+- **Migración:** `migrar` pasa a esta versión una hoja de Google descargada como `.xlsx` (Archivo → Descargar → Microsoft Excel) o el archivo de registros de una copia 1.x, sin pasar las filas por el agente (ADR 0006).
+  - **Entrada:** lee los valores de cada pestaña por el nombre de sus columnas. Ignora las calculadas de `informes` y quita las que el esquema ya no tiene, como `canal` de `busquedas`. Se detiene si falta una pestaña o columna del bloque o sobra una que no conoce.
+  - **Comprobación:** cada fila, con las mismas reglas que `agregar`. Con un solo error no escribe nada y dice todos, con pestaña, fila de la hoja y columna.
+  - **Correcciones:** `--correcciones` recibe un JSON `{pestaña: {ID o "fila N": {columna: texto}}}`, que se aplica antes de comprobar. Así solo las filas con error pasan por el agente, que le propone al titular cada corrección. En `informes`, que no tiene ID propio, o con un ID repetido, la fila se nombra por su número.
+  - **Salida:** el archivo completo y, por pestaña, cuántas filas tenía la entrada y cuántas tiene el archivo escrito, para que el titular compare. También dice las columnas quitadas, cuántas filas corrigió y las pestañas de la entrada que no son del esquema.
+  - **Sin sobrescribir:** no reemplaza un archivo de registros que ya tenga filas, salvo cuando la entrada es ese mismo archivo, de una versión anterior. Solo lee la entrada: la hoja de Drive queda intacta, y el titular decide si la borra.
+- **Instantánea:** las órdenes de escritura y `migrar` la regeneran después de escribir (REG-INSTANTANEA); si rechazan la entrada, no la tocan. `instantanea` la regenera a pedido, por ejemplo si alguien la borró o la editó.
 - **Lectura:** `leer` da una pestaña completa o las filas de unos IDs. `informe` da la tabla resumen de una búsqueda: sus filas de `informes` con las columnas calculadas de REG-CAMPOS, a la fecha de hoy en la zona horaria de 04 y con el umbral de «antigua» de 08/EVAL-ACUERDOS.
 - **Encabezados:** la herramienta los compara con el bloque en cada uso y se detiene si no coinciden (REG-DECISIONES, «Encabezados»).
 - **Historial y respaldo:** git. El archivo se versiona en la copia, así que no se ignora. Al cerrar una sesión que lo modificó, el agente le ofrece al titular un commit con él y, si la copia tiene remoto privado, el push.

@@ -823,5 +823,212 @@ class Importar(CopiaFicticia):
             "EMP-OTRA")
 
 
+CALCULADAS = ["empresa", "vacante", "encaje", "antiguedad", "alertas", "url_oficial"]
+
+
+def escribir_libro(ruta, pestanas):
+    """Un .xlsx con {pestaña: [fila 1, filas...]}, cada fila una lista de valores."""
+    import openpyxl
+    libro = openpyxl.Workbook()
+    libro.remove(libro.active)
+    for nombre, filas in pestanas.items():
+        hoja = libro.create_sheet(nombre)
+        for fila in filas:
+            hoja.append(fila)
+    libro.save(ruta)
+
+
+class Migrar(CopiaFicticia):
+    """migrar pasa a 2.0 una hoja descargada como .xlsx o un archivo de registros 1.x (ADR 0006)."""
+
+    def setUp(self):
+        super().setUp()
+        self.columnas = self.columnas_de_crear()
+        self.sesion = self.dir / "sesion"
+        self.sesion.mkdir()
+        self.descargada = self.sesion / "ChambaKit_Registros.xlsx"
+
+    def columnas_de_crear(self):
+        """Las columnas de cada pestaña según crear; el archivo que deja se borra."""
+        columnas = self.ok("crear")["pestanas"]
+        self.archivo.unlink()
+        return columnas
+
+    def libro_1x(self, busqueda, de_la_hoja):
+        """{pestaña: [encabezados, filas...]} con la forma 1.x: busquedas con canal y, si de_la_hoja, informes con
+        sus columnas calculadas, como las descarga la hoja de Google."""
+        pestanas = {}
+        for p, columnas in self.columnas.items():
+            encabezados = columnas + (["canal"] if p == "busquedas" else [])
+            # En la hoja, el encabezado de cada calculada es su fórmula; aquí, sin valor guardado.
+            encabezados += ([f'={{"{c}";MAP(B2:B,LAMBDA(v,v))}}' for c in CALCULADAS]
+                            if p == "informes" and de_la_hoja else [])
+            filas = [[f.get(c, "") or None for c in columnas] + (["Code"] if p == "busquedas" else [])
+                     + (["XA", "000123 — Puesto ficticio", "★★★☆☆ · 3/4", "3 d", "—", "https://example.com"]
+                        if p == "informes" and de_la_hoja else [])
+                     for f in busqueda.get(p, [])]
+            pestanas[p] = [encabezados] + filas
+        return pestanas
+
+    def hoja_invalida(self):
+        """La búsqueda ficticia con tres celdas que la hoja aceptó y solo marcó, y una fila vacía en medio."""
+        busqueda = busqueda_ficticia()
+        busqueda["vacantes"][1]["region_relacionada"] = "Cerca"
+        busqueda["observaciones"][0]["fecha_verificacion"] = "2026-13-45"
+        busqueda["informes"][0]["evaluacion_id"] = "EVA-0099"
+        pestanas = self.libro_1x(busqueda, de_la_hoja=True)
+        pestanas["vacantes"].insert(2, [None] * len(pestanas["vacantes"][0]))
+        return pestanas
+
+    def correcciones(self, correcciones):
+        ruta = self.sesion / "correcciones.json"
+        ruta.write_text(json.dumps(correcciones, ensure_ascii=False), encoding="utf-8")
+        return str(ruta)
+
+    def migrar(self, entrada, *argumentos):
+        return self.correr("migrar", str(entrada), *argumentos)
+
+    def assertNoEscribe(self, r, codigo, *textos):
+        self.assertEqual(r.returncode, codigo, r.stdout + r.stderr)
+        for t in textos:
+            self.assertIn(t, r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertEqual(r.stdout, "")
+        self.assertFalse(self.archivo.exists())
+        self.assertFalse((self.dir / "instantanea").exists())
+
+    def test_con_filas_invalidas_no_escribe_nada_y_lista_todos_los_errores(self):
+        escribir_libro(self.descargada, self.hoja_invalida())
+        r = self.migrar(self.descargada)
+        # Pestaña, fila de la hoja y columna; la fila vacía cuenta para el número de fila.
+        self.assertNoEscribe(r, 1, "vacantes, fila 4 (VAC-0002): region_relacionada: «Cerca»",
+                             "observaciones, fila 2 (OBS-0001): fecha_verificacion: «2026-13-45»",
+                             "informes, fila 2: evaluacion_id: «EVA-0099»", "No se escribió ninguna fila.")
+
+    def test_con_correcciones_migra_quita_canal_y_las_calculadas_y_da_los_conteos(self):
+        escribir_libro(self.descargada, self.hoja_invalida())
+        antes = self.descargada.read_bytes()
+        correcciones = self.correcciones({
+            "vacantes": {"VAC-0002": {"region_relacionada": "Indeterminada"}},
+            "observaciones": {"OBS-0001": {"fecha_verificacion": "2026-03-02"}},
+            "informes": {"fila 2": {"evaluacion_id": "EVA-0001"}}})
+        r = self.migrar(self.descargada, "--correcciones", correcciones)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        res = json.loads(r.stdout)
+        esperadas = {p: len(f) for p, f in busqueda_ficticia().items()}
+        self.assertEqual(res["conteos"], {p: {"entrada": n, "archivo": n} for p, n in esperadas.items()})
+        self.assertEqual(res["columnas_quitadas"], {"busquedas": ["canal"], "informes": CALCULADAS})
+        self.assertEqual(res["corregidas"], 3)
+        for pestana, filas in busqueda_ficticia().items():
+            with self.subTest(pestana=pestana):
+                self.assertEqual(self.leer(pestana), [{c: f.get(c, "") for c in self.columnas[pestana]} for f in filas])
+        self.assertIn("## BUS-0001", (self.dir / "instantanea" / "informes.md").read_text(encoding="utf-8"))
+        # Solo lee la hoja descargada.
+        self.assertEqual(self.descargada.read_bytes(), antes)
+
+    def test_las_celdas_que_no_son_texto_se_guardan_como_texto(self):
+        pestanas = self.libro_1x(busqueda_ficticia(), de_la_hoja=True)
+        columnas = pestanas["vacantes"][0]
+        pestanas["vacantes"][1][columnas.index("fecha_publicacion")] = dt.datetime(2026, 2, 20)
+        pestanas["busquedas"][1][pestanas["busquedas"][0].index("fecha_hora")] = dt.datetime(2026, 3, 2, 9, 30)
+        pestanas["vacantes"][1][columnas.index("job_id")] = 123
+        escribir_libro(self.descargada, pestanas)
+        r = self.migrar(self.descargada, "--correcciones", self.correcciones({}))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.leer("vacantes", "--id", "VAC-0001")[0]["fecha_publicacion"], "2026-02-20")
+        self.assertEqual(self.leer("busquedas")[0]["fecha_hora"], "2026-03-02 09:30")
+        self.assertEqual(self.leer("vacantes", "--id", "VAC-0001")[0]["job_id"], "123")
+
+    def test_rechaza_correcciones_que_no_se_pueden_aplicar(self):
+        escribir_libro(self.descargada, self.hoja_invalida())
+        casos = {
+            "ID inexistente": ({"vacantes": {"VAC-0099": {"titulo": "x"}}}, "VAC-0099"),
+            "fila inexistente": ({"informes": {"fila 9": {"evaluacion_id": "EVA-0001"}}}, "fila 9"),
+            "pestaña sin ID propio": ({"informes": {"BUS-0001": {"evaluacion_id": "EVA-0001"}}}, "fila N"),
+            "columna que no se guarda": ({"informes": {"fila 2": {"encaje": "★"}}}, "encaje"),
+            "pestaña desconocida": ({"postulaciones": {}}, "postulaciones"),
+            "valor que no es texto": ({"vacantes": {"VAC-0002": {"titulo": 1}}}, "titulo"),
+        }
+        for caso, (correcciones, texto) in casos.items():
+            with self.subTest(caso):
+                self.assertNoEscribe(self.migrar(self.descargada, "--correcciones", self.correcciones(correcciones)),
+                                     1, texto)
+
+    def test_un_id_repetido_se_corrige_por_su_fila(self):
+        busqueda = busqueda_ficticia()
+        busqueda["habilidades_vacante"].append(dict(busqueda["habilidades_vacante"][0], habilidad_literal="Python"))
+        escribir_libro(self.descargada, self.libro_1x(busqueda, de_la_hoja=True))
+        self.assertNoEscribe(self.migrar(self.descargada), 1, "habilidades_vacante, fila 3 (HV-00001)")
+        self.assertNoEscribe(self.migrar(self.descargada, "--correcciones", self.correcciones(
+            {"habilidades_vacante": {"HV-00001": {"habilidad_literal": "x"}}})), 1, "HV-00001", "fila N")
+        r = self.migrar(self.descargada, "--correcciones", self.correcciones(
+            {"habilidades_vacante": {"fila 3": {"habilidad_observacion_id": "HV-00002"}}}))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual([f["habilidad_observacion_id"] for f in self.leer("habilidades_vacante")],
+                         ["HV-00001", "HV-00002"])
+
+    def test_rechaza_una_entrada_sin_la_forma_de_los_registros(self):
+        def sin_pestana():
+            pestanas = self.libro_1x(busqueda_ficticia(), de_la_hoja=True)
+            del pestanas["documentos"]
+            return pestanas
+
+        def con_columna(pestana, encabezado, valor):
+            pestanas = self.libro_1x(busqueda_ficticia(), de_la_hoja=True)
+            pestanas[pestana][0].append(encabezado)
+            pestanas[pestana][1].append(valor)
+            return pestanas
+
+        def sin_columna(pestana, columna):
+            pestanas = self.libro_1x(busqueda_ficticia(), de_la_hoja=True)
+            i = pestanas[pestana][0].index(columna)
+            for fila in pestanas[pestana]:
+                del fila[i]
+            return pestanas
+
+        casos = {
+            "pestaña que falta": (sin_pestana(), "documentos"),
+            "columna desconocida": (con_columna("vacantes", "salario", "1000"), "salario"),
+            "columna sin encabezado con datos": (con_columna("vacantes", None, "nota"),
+                                                 "vacantes, fila 2: la columna M no tiene encabezado"),
+            "columna que falta": (sin_columna("vacantes", "titulo"), "titulo"),
+        }
+        for caso, (pestanas, texto) in casos.items():
+            with self.subTest(caso):
+                escribir_libro(self.descargada, pestanas)
+                self.assertNoEscribe(self.migrar(self.descargada), 1, texto)
+        self.assertNoEscribe(self.migrar(self.sesion / "no_existe.xlsx"), 2, "no_existe.xlsx")
+        (self.sesion / "roto.xlsx").write_text("no es un xlsx", encoding="utf-8")
+        self.assertNoEscribe(self.migrar(self.sesion / "roto.xlsx"), 2, "roto.xlsx")
+
+    def test_pone_al_dia_el_archivo_1x_de_la_copia_en_su_lugar(self):
+        escribir_libro(self.archivo, self.libro_1x(busqueda_ficticia(), de_la_hoja=False))
+        self.assertEqual(self.correr("leer", "busquedas").returncode, 2)
+        r = self.migrar(self.archivo)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["columnas_quitadas"], {"busquedas": ["canal"]})
+        self.assertEqual(self.leer("busquedas"), [{c: f.get(c, "") for c in self.columnas["busquedas"]}
+                                                  for f in busqueda_ficticia()["busquedas"]])
+        self.assertTrue((self.dir / "instantanea" / "vacantes.md").is_file())
+
+    def test_no_sobrescribe_un_archivo_de_registros_con_filas(self):
+        escribir_libro(self.descargada, self.libro_1x(busqueda_ficticia(), de_la_hoja=True))
+        self.ok("crear")
+        self.ok("agregar", entrada={"busquedas": [dict(busqueda_ficticia()["busquedas"][0], busqueda_id="BUS-0009")]})
+        antes = self.archivo.read_bytes()
+        r = self.migrar(self.descargada)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("ya tiene filas", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertEqual(self.archivo.read_bytes(), antes)
+
+    def test_reemplaza_el_archivo_vacio_que_dejo_crear(self):
+        escribir_libro(self.descargada, self.libro_1x(busqueda_ficticia(), de_la_hoja=True))
+        self.ok("crear")
+        r = self.migrar(self.descargada)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(len(self.leer("vacantes")), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

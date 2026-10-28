@@ -6,6 +6,7 @@ Uso, con el Python del entorno virtual de la copia (en Windows, .venv\\Scripts\\
     .venv/bin/python -I herramientas/registros.py agregar [FILAS.json]
     .venv/bin/python -I herramientas/registros.py actualizar [CAMBIOS.json]
     .venv/bin/python -I herramientas/registros.py importar SALIDA.json DECISIONES.json
+    .venv/bin/python -I herramientas/registros.py migrar ENTRADA.xlsx [--correcciones CORRECCIONES.json]
     .venv/bin/python -I herramientas/registros.py leer PESTAÑA [--id ID ...] [--columna COLUMNA]
     .venv/bin/python -I herramientas/registros.py informe BUS-ID
     .venv/bin/python -I herramientas/registros.py instantanea
@@ -28,15 +29,21 @@ sus columnas guardadas: las calculadas de informes no se guardan, las da la orde
    texto, "estado_vigencia": valor, "motivo": texto}}}}; cada línea «revisar ubicación» pide su región y cada
   «revisar vigencia», su estado, y una empresa en [FALLO] se nombra en no_revisado_pendientes. Da el busqueda_id y
   una línea «VAC-ID · título · departamento» por vacante de la búsqueda.
+- migrar: pasa a esta versión una hoja de Google descargada como .xlsx o el archivo de registros de una versión
+  anterior (ADR 0006). Lee los valores de cada pestaña por el nombre de sus columnas, ignora las calculadas de
+  informes y quita las que el esquema ya no tiene (canal), aplica las correcciones, {pestaña: {ID o "fila N":
+  {columna: texto}}}, y comprueba cada fila como agregar. Escribe el archivo completo y da, por pestaña, las filas
+  de la entrada y las del archivo escrito, más las columnas quitadas, las filas corregidas y las pestañas ignoradas. Solo lee la entrada. No sobrescribe un archivo de registros con filas,
+  salvo cuando la entrada es ese mismo archivo.
 - leer: las filas de una pestaña, o solo las que tienen esos IDs en la primera columna o en --columna.
 - informe: la tabla resumen de una búsqueda (08/EVAL-INFORME), con las columnas calculadas de informes
   (11/REG-CAMPOS) a la fecha de hoy en la zona horaria de 04 y con el umbral de «antigua» de 08/EVAL-ACUERDOS.
 - instantanea: regenera completa la instantánea que lee el canal Web (11/REG-INSTANTANEA), en instantanea/:
   informes.md, con las últimas 10 búsquedas y su tabla resumen, y vacantes.md, con una sección por vacante
-  evaluada cuya última observación no es Cerrada. Agregar, actualizar e importar la regeneran después de escribir. Si
-  pasa de 300 KB, lo avisa en stderr sin fallar.
+  evaluada cuya última observación no es Cerrada. Agregar, actualizar, importar y migrar la regeneran después de
+  escribir. Si pasa de 300 KB, lo avisa en stderr sin fallar.
 
-Agregar, actualizar e importar comprueban cada fila que escriben contra el esquema: tipos, listas
+Agregar, actualizar, importar y migrar comprueban cada fila que escriben contra el esquema: tipos, listas
 (empresa_id, contra 06/CAT-EMPRESAS), obligatoriedad, IDs únicos y referencias. Con un solo error no
 escriben nada: dicen todos en stderr y terminan con código 1. El JSON va a stdout. Si falta la
 configuración, el archivo u openpyxl, o se pide una pestaña o búsqueda inexistente, termina con código 2
@@ -140,17 +147,22 @@ def ruta_archivo(esquema):
     return os.path.join(RAIZ, esquema["archivo"]["nombre"] + ".xlsx")
 
 
-def crear(esquema):
-    ruta = ruta_archivo(esquema)
-    if os.path.exists(ruta):
-        error(f"{ruta} ya existe; no se sobrescribe.")
+def libro_vacio(esquema):
+    """El libro con las pestañas del esquema y solo sus encabezados."""
     libro = biblioteca_xlsx().Workbook()
     libro.remove(libro.active)
     for p in esquema["pestanas"]:
         pestana = libro.create_sheet(p["nombre"])
         pestana.append(encabezados(p))
         pestana.freeze_panes = "A2"
-    libro.save(ruta)
+    return libro
+
+
+def crear(esquema):
+    ruta = ruta_archivo(esquema)
+    if os.path.exists(ruta):
+        error(f"{ruta} ya existe; no se sobrescribe.")
+    libro_vacio(esquema).save(ruta)
     return {"archivo": ruta, "pestanas": {p["nombre"]: encabezados(p)
                                           for p in esquema["pestanas"]}}
 
@@ -690,6 +702,174 @@ def importar(esquema, salida, decisiones):
     return {"busqueda_id": busqueda_id, "vacantes": compacta}
 
 
+# --- migrar: la hoja descargada o un archivo de registros 1.x (ADR 0006) ----------
+
+# Las columnas que el esquema ya no tiene, por pestaña: migrar las quita.
+RETIRADAS = {"busquedas": ("canal",)}
+
+
+def texto_de_celda(valor):
+    """Una celda de la entrada como el texto que guarda el archivo. La hoja guardaba texto, pero una celda editada a
+    mano puede llegar como fecha o número."""
+    if valor is None:
+        return ""
+    if isinstance(valor, dt.datetime):
+        return f"{valor:%Y-%m-%d}" if valor.time() == dt.time() else f"{valor:%Y-%m-%d %H:%M}"
+    if isinstance(valor, dt.date):
+        return valor.isoformat()
+    if isinstance(valor, float) and valor.is_integer():
+        return str(int(valor))
+    return str(valor)
+
+
+def tiene_filas(ruta):
+    """Si alguna pestaña del libro tiene algo debajo de su fila 1."""
+    try:
+        libro = biblioteca_xlsx().load_workbook(ruta, read_only=True)
+    except Exception as e:
+        error(f"{ruta}: no se pudo abrir para ver si tiene filas ({e}); migrar no lo sobrescribe.")
+    try:
+        return any(any(v not in (None, "") for v in fila)
+                   for pestana in libro.worksheets for fila in pestana.iter_rows(min_row=2, values_only=True))
+    finally:
+        libro.close()
+
+
+def encabezado(celda, formula):
+    """El nombre de una columna de la entrada. En la hoja, el de cada calculada de informes era una fórmula,
+    ={"nombre";MAP(…)}: si el archivo no guarda su valor, el nombre sale de la fórmula."""
+    m = celda is None and isinstance(formula, str) and re.match(r'=\{"(\w+)";', formula)
+    return m.group(1) if m else texto_de_celda(celda).strip()
+
+
+def leer_para_migrar(esquema, ruta):
+    """Las filas de la entrada, {pestaña: [(fila en la hoja, {columna guardada: texto})]}, con las columnas quitadas
+    de cada pestaña y las pestañas que el esquema no tiene. De la hoja descargada se leen los valores, no las
+    fórmulas. Rechaza la entrada si le falta una pestaña o una columna, o trae una que el esquema no conoce."""
+    try:
+        libro = biblioteca_xlsx().load_workbook(ruta, data_only=True)
+        formulas = biblioteca_xlsx().load_workbook(ruta, read_only=True)
+    except OSError as e:
+        error(f"{ruta}: no se pudo leer ({e.strerror}).")
+    except Exception as e:
+        error(f"{ruta}: no se pudo abrir como .xlsx ({e}). Descarga la hoja con Archivo → Descargar → Microsoft "
+              "Excel (.xlsx).")
+    from openpyxl.utils import get_column_letter
+    errores, filas, quitadas = [], {}, {}
+    for p in esquema["pestanas"]:
+        nombre, columnas = p["nombre"], encabezados(p)
+        if nombre not in libro.sheetnames:
+            errores.append(f"{nombre}: falta la pestaña en {ruta}.")
+            continue
+        valores = libro[nombre].iter_rows(values_only=True)
+        fila_1 = next(formulas[nombre].iter_rows(max_row=1, values_only=True), ())
+        en_la_entrada = [encabezado(v, f) for v, f in zip(next(valores, ()), fila_1 + (None,) * len(columnas))]
+        se_quitan = [c["nombre"] for c in p["columnas"] if c["nombre"] not in columnas] + list(RETIRADAS.get(nombre, ()))
+        errores += [f"{nombre}: falta la columna {c}." for c in columnas if c not in en_la_entrada]
+        errores += [f"{nombre}: la columna {c} se repite." for c in dict.fromkeys(en_la_entrada)
+                    if c and en_la_entrada.count(c) > 1]
+        errores += [f"{nombre}: {c!r} no es una columna de 11/REG-ESQUEMA ni de las que se quitan "
+                    f"({', '.join(se_quitan) or 'ninguna'})." for c in en_la_entrada
+                    if c and c not in columnas and c not in se_quitan]
+        posicion = {c: en_la_entrada.index(c) for c in columnas if c in en_la_entrada}
+        sin_encabezado = {i for i, c in enumerate(en_la_entrada) if not c}
+        filas[nombre] = []
+        for n, fila in enumerate(valores, 2):
+            fila = [texto_de_celda(v) for v in fila]
+            if not any(fila):
+                continue
+            errores += [f"{nombre}, fila {n}: la columna {get_column_letter(i + 1)} no tiene encabezado y tiene datos («{fila[i]}»)."
+                        for i in sorted(sin_encabezado) if i < len(fila) and fila[i]]
+            filas[nombre].append((n, {c: fila[i] if i < len(fila) else "" for c, i in posicion.items()}))
+        quitadas[nombre] = [c for c in se_quitan if c in en_la_entrada]
+    formulas.close()
+    if errores:
+        rechazar(errores)
+    ignoradas = [n for n in libro.sheetnames if n not in filas]
+    return filas, {n: c for n, c in quitadas.items() if c}, ignoradas
+
+
+def corregir(esquema, filas, correcciones):
+    """Aplica a las filas de la entrada las correcciones, {pestaña: {ID o «fila N»: {columna: texto}}}. Devuelve los
+    errores de las que no se pueden aplicar y cuántas filas cambió."""
+    if not (isinstance(correcciones, dict) and all(isinstance(c, dict) for c in correcciones.values())):
+        return ["Las correcciones deben ser un objeto JSON {pestaña: {ID o «fila N»: {columna: texto}}}."], 0
+    errores, corregidas = [], set()
+    for nombre, por_fila in correcciones.items():
+        if nombre not in filas:
+            errores.append(f"correcciones: {nombre!r} no es una pestaña de 11/REG-ESQUEMA; opciones: "
+                           f"{', '.join(filas)}.")
+            continue
+        p = pestana_del_esquema(esquema, nombre)
+        id_ = clave(p)
+        for llave, cambio in por_fila.items():
+            etiqueta = f"correcciones, {nombre}, {llave}"
+            numero = re.fullmatch(r"fila (\d+)", llave)
+            if numero:
+                elegidas = [(n, f) for n, f in filas[nombre] if n == int(numero.group(1))]
+            elif id_["tipo"] != "id":
+                errores.append(f"{etiqueta}: {nombre} no tiene ID propio; cada fila se corrige como «fila N».")
+                continue
+            else:
+                elegidas = [(n, f) for n, f in filas[nombre] if f[id_["nombre"]] == llave]
+            if not elegidas:
+                errores.append(f"{etiqueta}: no hay una fila con ese {'número' if numero else id_['nombre']} en "
+                               f"{nombre}.")
+                continue
+            if len(elegidas) > 1:
+                errores.append(f"{etiqueta}: el ID se repite en las filas "
+                               f"{', '.join(str(n) for n, _ in elegidas)}; corrige cada una como «fila N».")
+                continue
+            if not isinstance(cambio, dict):
+                errores.append(f"{etiqueta}: debe ser un objeto {{columna: texto}}.")
+                continue
+            n, fila = elegidas[0]
+            for columna, valor in cambio.items():
+                if columna not in fila:
+                    errores.append(f"{etiqueta}: {columna!r} no es una columna guardada de {nombre}.")
+                elif not isinstance(valor, (str, type(None))):
+                    errores.append(f"{etiqueta}: {columna} debe ser texto, entre comillas; dice {valor!r}.")
+                else:
+                    fila[columna] = valor or ""
+                    corregidas.add((nombre, n))
+    return errores, len(corregidas)
+
+
+def migrar(esquema, entrada, correcciones):
+    """Escribe el archivo de registros desde una hoja descargada como .xlsx o pone al día el archivo 1.x de la copia:
+    sin las columnas calculadas de informes ni las retiradas, y con cada fila comprobada como en agregar después de
+    aplicarle las correcciones. Con un solo error no escribe nada. Solo lee la entrada, salvo que sea el archivo
+    mismo."""
+    ruta = ruta_archivo(esquema)
+    if not os.path.isfile(entrada):
+        error(f"{entrada}: no existe el archivo que se migra.")
+    if os.path.exists(ruta) and not os.path.samefile(ruta, entrada) and tiene_filas(ruta):
+        error(f"{ruta} ya tiene filas; migrar no lo sobrescribe. Solo pone al día ese mismo archivo, si es de una "
+              "versión anterior: `migrar` con su ruta.")
+    filas, quitadas, ignoradas = leer_para_migrar(esquema, entrada)
+    errores, corregidas = corregir(esquema, filas, correcciones)
+    todas = {nombre: [f for _, f in de_la_pestana] for nombre, de_la_pestana in filas.items()}
+    revisar = []
+    for p in esquema["pestanas"]:
+        id_ = clave(p)
+        for n, fila in filas[p["nombre"]]:
+            con_id = id_["tipo"] == "id" and fila[id_["nombre"]]
+            etiqueta = f"fila {n}" + (f" ({fila[id_['nombre']]})" if con_id else "")
+            revisar.append((p["nombre"], fila, etiqueta))
+    errores += comprobar(esquema, todas, revisar)
+    if errores:
+        rechazar(errores)
+    vistas = instantanea(esquema, todas)
+    libro = libro_vacio(esquema)
+    anexar(libro, todas)
+    guardar(libro, ruta)
+    guardar_instantanea(vistas)
+    escritas = abrir(esquema)[1]
+    return {"archivo": ruta,
+            "conteos": {nombre: {"entrada": len(filas[nombre]), "archivo": len(escritas[nombre])} for nombre in filas},
+            "columnas_quitadas": quitadas, "corregidas": corregidas, "pestanas_ignoradas": ignoradas}
+
+
 def leer_zona_horaria():
     """La zona_horaria del bloque de 04/PREF-UBICACION, con la que se cuenta la antigüedad."""
     ruta = MODULO_04
@@ -975,6 +1155,10 @@ def main():
     o.add_argument("salida", metavar="SALIDA.json", help="la salida JSON de herramientas/buscar.py")
     o.add_argument("decisiones", metavar="DECISIONES.json",
                    help="alcance, versiones, pendientes y la decisión de cada línea «revisar»")
+    o = ordenes.add_parser("migrar", help="pasa a esta versión una hoja descargada o un archivo de registros anterior")
+    o.add_argument("entrada", metavar="ENTRADA.xlsx", help="la hoja descargada como .xlsx o el archivo de registros 1.x")
+    o.add_argument("--correcciones", metavar="CORRECCIONES.json",
+                   help='{pestaña: {ID o "fila N": {columna: texto}}}, aplicadas antes de comprobar')
     ordenes.add_parser("instantanea", help="regenera la instantánea completa que lee el canal Web")
     a = ap.parse_args()
     esquema = leer_esquema()
@@ -986,6 +1170,8 @@ def main():
         res = actualizar(esquema, leer_entrada(a.filas))
     elif a.orden == "importar":
         res = importar(esquema, leer_entrada(a.salida), leer_entrada(a.decisiones))
+    elif a.orden == "migrar":
+        res = migrar(esquema, a.entrada, leer_entrada(a.correcciones) if a.correcciones else {})
     elif a.orden == "informe":
         res = informe(esquema, a.busqueda_id)
     elif a.orden == "instantanea":

@@ -20,7 +20,7 @@
 | 08 Evaluación | 1.3 | Sin llenar | `/configurar`, paso 5 (Habilidades y roles): queda listo con las condiciones de 04 y las familias de 05 |
 | 09 Generación de CV | 1.2 | Sin llenar | `/configurar`, paso 6 (CV base): color del CV |
 | 10 Tendencias | 1.1 | Sin llenar | `/configurar`, paso 8 (Registros): queda listo cuando existen los registros |
-| 11 Esquema de registros | 1.4 | Sin llenar | `/configurar`, paso 8 (Registros): crea los registros desde este esquema |
+| 11 Esquema de registros | 1.5 | Sin llenar | `/configurar`, paso 8 (Registros): crea los registros desde este esquema |
 
 **Orden sugerido:**
 
