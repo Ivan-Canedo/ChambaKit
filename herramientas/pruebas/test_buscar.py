@@ -55,10 +55,10 @@ def ficha(eid, configuracion):
 
 
 def modulo_06(fichas):
-    filas = "".join(f"| {eid} | Empresa ficticia | Objetivo | Solo Code | 0.1 | 2026-10-16 |\n" for eid in fichas)
+    filas = "".join(f"| {eid} | Empresa ficticia | Objetivo | 0.1 | 2026-10-16 |\n" for eid in fichas)
     return ("# 06 — Empresas objetivo y fichas\n\n## CAT-EMPRESAS — Catálogo\n\n"
-            "| ID | Empresa | Estado | Canal | Versión de ficha | Fecha de comprobación |\n"
-            "| --- | --- | --- | --- | --- | --- |\n" + filas + "\n## CAT-REGLAS — Mantenimiento\n\n- Reglas.\n\n"
+            "| ID | Empresa | Estado | Versión de ficha | Fecha de comprobación |\n"
+            "| --- | --- | --- | --- | --- |\n" + filas + "\n## CAT-REGLAS — Mantenimiento\n\n- Reglas.\n\n"
             + "\n".join(fichas.values()))
 
 

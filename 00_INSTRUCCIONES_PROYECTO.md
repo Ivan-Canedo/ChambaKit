@@ -1,6 +1,6 @@
 # ChambaKit — Instrucciones del proyecto
 
-Versión 1.3 — 2026-10-27 — Un solo lugar de registros, el archivo de la copia; el canal Web lee su instantánea.
+Versión 1.4 — 2026-10-27 — El canal Web consulta la instantánea y hace comprobaciones puntuales; lo que se conserve va en una nota para Code.
 
 Este texto va en el campo «Instrucciones» del proyecto.
 
@@ -61,6 +61,15 @@ Conversa en español.
 - No revalidar otras secciones por inferencia.
 - **Estilo:** directo y técnico. Mencionar el límite de un hecho una sola vez, donde importa, sin repetir advertencias.
 
+## Canal Web
+
+En un chat de este proyecto en claude.ai:
+
+- **Lee** los módulos y la instantánea. Al dar un dato de la instantánea, decir su fecha de exportación, que está en su encabezado: lo registrado después no aparece hasta el siguiente «Sync».
+- **No hace búsquedas ni escribe registros.** Si el titular pide una búsqueda, recorrer el listado de una empresa o registrar algo, decirle que eso se hace en el canal Code (07/BUS-CANALES).
+- **Comprobaciones puntuales, a pedido:** leer el anuncio oficial de una vacante, o de unas pocas, que el titular nombre o pegue, para ver su vigencia, evaluarla (08) o adaptar el CV (09). Nunca listados ni páginas de resultados: eso es una búsqueda. La lectura sigue 07/BUS-ACCESO-WEB.
+- **Lo que haya que conservar,** como la observación, los requisitos o la evaluación, va en una nota para Code («Cambios a los registros»).
+
 ## Escritura de registros
 
 - **Herramienta:** solo desde Code, con `herramientas/registros.py`, que comprueba cada fila contra el esquema y regenera la instantánea (11/REG-LOCAL).
@@ -74,3 +83,14 @@ Los módulos solo se editan en el canal Code, en la copia local. El conocimiento
 - el módulo y la sección o ID;
 - el cambio propuesto y su motivo;
 - si es un hecho para 02, la frase literal del titular y la fecha, para registrarla como fuente U##.
+
+## Cambios a los registros
+
+Los registros solo se escriben en el canal Code («Escritura de registros»). Si en la conversación surge algo que el titular quiere conservar, como una comprobación puntual, no entregar filas para pegar. Al cerrar, dejar una **nota para Code** con:
+
+- la pestaña y, si la fila ya existe, su ID;
+- cada valor como `columna: valor`, con los nombres de 11/REG-CAMPOS;
+- la fuente (la URL leída o «pegada por el titular») y la fecha de la lectura;
+- las versiones de los módulos que usó, como 07, 08 y la ficha de 06.
+
+Code la aplica según 07/BUS-PUNTUAL.

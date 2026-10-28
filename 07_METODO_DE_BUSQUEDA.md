@@ -1,6 +1,6 @@
 # 07 — Método de búsqueda
 
-**Versión:** 1.2 — 2026-10-27 — Sale la columna `canal` de `busquedas` (11/REG-CAMPOS).
+**Versión:** 1.3 — 2026-10-27 — Las búsquedas, solo en Code; las comprobaciones puntuales, en los dos canales (BUS-PUNTUAL). BUS-ACCESO-WEB queda para leer una vacante desde Web.
 **Estado:** método de la plantilla. Queda listo con la región de 04 y las fichas de 06, en el paso 7 de `/configurar` (Empresas).
 
 ## BUS-ALCANCE — Responsabilidad
@@ -28,24 +28,14 @@ Las reglas de este método valen para cualquier titular. Si el titular cambia un
 - **Agregadores y buscadores:** solo si la fuente oficial no da cobertura completa (BUS-COBERTURA) o al descubrir empresas nuevas.
 - **Empresas nuevas:** solo cuando se pida; buscarlas por funciones, habilidades, roles, ubicación y condiciones (02, 04 y 05), no solo por sector. Una empresa explorada entra al catálogo de 06 solo si el titular la acepta.
 
-## BUS-CANALES — Dónde se ejecuta cada búsqueda
+## BUS-CANALES — Qué se hace en cada canal
 
-La diferencia entre canales no es renderizar JavaScript, sino qué peticiones llegan al portal.
-
-| | Code | Web |
-| --- | --- | --- |
-| Dónde | Un agente con terminal sobre esta carpeta: Claude Code, Antigravity u otro | Chat del proyecto en claude.ai, desde cualquier dispositivo; necesita Claude |
-| Acceso a los portales | La terminal llega directo: peticiones GET y POST | Solo la herramienta de lectura web: GET, respuesta mediada por un modelo y con caché (BUS-ACCESO-WEB) |
-| Lectura | `herramientas/buscar.py`: conteos, IDs y campos exactos (BUS-ACCESO-CODE) | Manual, página por página, con comprobación de ID |
-| Registros (00, «Registros») | La hoja, con el conector de Google Sheets, solo si el agente es Claude Code; en modo local, el archivo, con `herramientas/registros.py` | La hoja, con el conector de Google Sheets; en modo local no hay canal Web |
-| Empresas | Todas las del catálogo de 06 | Solo las fichas con canal «Web y Code» |
-
-- **`robots.txt`:** solo se usan rutas que el sitio permite, en ambos canales. La herramienta web lo respeta por sí sola. En Code, cada adaptador lo comprueba en cada búsqueda, y la ficha anota lo que se revisó al darla de alta. Si una API lo prohíbe, se busca otra ruta del sitio oficial; no se rodea.
-- **Canal de cada empresa:** lo declara su ficha en 06. «Solo Code» cuando el listado exige POST o navegador, o cuando el texto visible no trae los campos del mapeo (BUS-ACCESO-WEB).
-- **Búsqueda completa:** se hace desde Code; desde Web se continúa con lo registrado.
-- **Búsqueda desde Web:** solo cubre las empresas con canal «Web y Code». Las «Solo Code» no se buscan ni se sustituyen con agregadores: se anotan en `no_revisado_pendientes` con la fecha de su última búsqueda en Code, tomada de `busquedas`.
+- **Búsquedas:** solo en Code, porque la terminal llega directo a los portales, con GET y POST, y `herramientas/buscar.py` da conteos, IDs y campos exactos (BUS-ACCESO-CODE). Si el titular pide una búsqueda desde Web, el agente le dice que se hace en Code.
+- **Comprobaciones puntuales:** en los dos canales (BUS-PUNTUAL). Desde Web, con la herramienta de lectura web del chat (BUS-ACCESO-WEB).
+- **Registros:** solo los escribe Code, con `herramientas/registros.py` (00, «Escritura de registros»). Web lee la instantánea (11/REG-INSTANTANEA) y deja en una nota para Code lo que haya que conservar (00, «Cambios a los registros»).
 - **Continuidad:** lo que registra una búsqueda en Code (vacantes, observaciones, requisitos, evaluaciones y la tabla resumen en `informes`) se usa desde Web para ver la tabla, pedir el detalle de una vacante o adaptar el CV, sin repetir la búsqueda (08/EVAL-INFORME).
-- **Empresa sin API:** antes de declararla «Solo Code», buscar la API que usa su portal; a veces está en el dominio de la empresa y no en el de la plataforma. Si no hay, un navegador sin interfaz (Chromium headless) en Code.
+- **`robots.txt`:** solo se usan rutas que el sitio permite, en ambos canales. La herramienta web lo respeta por sí sola. En Code, cada adaptador lo comprueba en cada búsqueda, y la ficha anota lo que se revisó al darla de alta. Si una API lo prohíbe, se busca otra ruta del sitio oficial; no se rodea.
+- **Empresa sin API:** buscar la API que usa su portal; a veces está en el dominio de la empresa y no en el de la plataforma. Si no hay, un navegador sin interfaz (Chromium headless) en Code.
 
 ## BUS-ACCESO-CODE — Script de búsqueda
 
@@ -70,30 +60,29 @@ python3 -I herramientas/buscar.py [EMP-ID ...] [--salida archivo.json] [--sin-re
   - `unicos` y `total_reportado`: la suma de los listados, con cada vacante contada una vez aunque la traigan dos (el de la región y el de remotas).
   - `fecha_hora`: la de inicio, en la zona horaria de 04.
 - **Vigencia:** sugiere `Confirmada abierta` solo con el indicador positivo de su plataforma, o, si la plataforma no publica uno (06/CAT-PLATAFORMAS), con la presencia en el listado, como admite BUS-VIGENCIA. Cualquier otro valor sale como «Revisar» y se decide con BUS-VIGENCIA. El motivo de un indicador del detalle ya trae el prefijo «Detalle oficial: » con el que se registra.
-- **Fallos:** si una API cambia de forma o no responde, o su `robots.txt` prohíbe la ruta, la empresa sale como `[FALLO]` con el motivo y la búsqueda de esa empresa queda sin hacer; no se completa a mano con otro canal sin declararlo.
+- **Fallos:** si una API cambia de forma o no responde, o su `robots.txt` prohíbe la ruta, la empresa sale como `[FALLO]` con el motivo y la búsqueda de esa empresa queda sin hacer; no se completa a mano por otra vía sin declararlo.
 - **Qué no hace:** filtrar por familia ROL, evaluar ni escribir en los registros. Eso sigue en los pasos 4–9.
 - **Resumen en pantalla:** una línea por empresa (`[OK]`, `[INCOMPLETA]`, `[SIN TOTAL]` o `[FALLO]`; únicos/total, en la región y remotas), una línea `cobertura:` si la fuente no publica total, y las líneas «revisar» que hay que atender antes de registrar, también las de las remotas fuera de la región. Una vacante sin Job ID publicado se nombra por su URL.
 
-## BUS-ACCESO-WEB — Lectura web desde el chat
+## BUS-ACCESO-WEB — Lectura de una vacante desde Web
 
-Aplica solo al canal Web:
+Aplica a una comprobación puntual desde el canal Web (BUS-PUNTUAL). La terminal del chat no llega a los portales de empleo (el proxy rechaza la conexión): se lee con la herramienta de lectura web, que solo hace GET y devuelve la respuesta mediada por un modelo y con caché.
 
-- **Terminal:** no llega a los portales de empleo (el proxy rechaza la conexión). Toda la lectura se hace con la herramienta de lectura web (WebFetch). La terminal solo sirve para cálculos locales, como convertir fechas Unix.
-- **Reutilización de respuestas:** la herramienta puede devolver la respuesta de otra URL parecida del mismo sitio, guardada unos 15 minutos. Por eso:
-  - Cada consulta usa una forma de URL distinta: otro dominio equivalente, `/` final o no, otro orden de parámetros. Las formas de cada empresa están en su ficha.
-  - **Después de cada lectura se comprueba que lo devuelto corresponda a lo pedido** (ID, página o filtro). Si no corresponde, se cambia la forma y se repite. Si sigue sin corresponder, ese dato queda como no revisado.
-- **Lectura mediada:** la respuesta pasa por un modelo intermedio. Se piden los campos literales que se necesitan y se validan conteos e IDs.
-- **Solo texto visible:** la herramienta convierte la página a texto y descarta los `<script>`; el JSON-LD y los datos embebidos no llegan. En Web, cada ficha indica qué se lee del texto visible.
-- **Sin terminal ni rodeos:** si la herramienta no puede leer algo (por `robots.txt` o por la red), el dato queda como no revisado o se deja para Code. La búsqueda no depende de pasos manuales del titular: no se le pide que pegue URL ni que descargue páginas.
+- **Solo lo nombrado:** el anuncio de cada vacante que el titular nombra o pega, nunca un listado ni páginas de resultados.
+- **Comprobación de ID:** la herramienta puede devolver la respuesta de otra URL parecida del mismo sitio, guardada unos 15 minutos. **Después de cada lectura se comprueba que lo devuelto sea la vacante pedida,** por su Job ID. Si no lo es, se cambia la forma de la URL (otro dominio equivalente, `/` final o no, otro orden de parámetros) y se repite. Si sigue sin serlo, la vacante queda `No verificable`, con el motivo «devolvió otro ID».
+- **Lectura mediada:** la respuesta pasa por un modelo intermedio, así que se piden los campos literales que se necesitan: Job ID, título, ubicación, modalidad, fecha de publicación, requisitos y el indicador de postulación.
+- **Solo texto visible:** la herramienta convierte la página a texto y descarta los `<script>`; el JSON-LD y los datos embebidos no llegan. Si la ficha de la empresa en 06 dice cómo leer el detalle desde Web (06/FICHA-PLANTILLA, «Acceso»), se lee así. Un campo que no aparece queda sin leer; no se completa por inferencia.
+- **Vigencia:** BUS-VIGENCIA, con lo que muestre el texto visible. Sin listado, la presencia en él no cuenta.
+- **Sin rodeos:** no se le pide al titular que descargue páginas. Si la herramienta no puede leer el anuncio (por `robots.txt` o por la red), la vacante queda `No verificable` o la comprobación se deja para Code. Si el titular pega el texto de un anuncio que no está en el portal, se usa como aportado por él (BUS-PUNTUAL).
 
 ## BUS-PASOS — Ejecución
 
-1. **Encargo.** Empresas y región. Por defecto, todas las de 06 con la región de 04: sus localidades, más el remoto según su alcance. Desde Web, solo las de canal «Web y Code» (BUS-CANALES).
+1. **Encargo.** Empresas y región. Por defecto, todas las de 06 con la región de 04: sus localidades, más el remoto según su alcance.
 2. **Preparar.** Leer la ficha de cada empresa en 06 (acceso, ubicaciones, campos) y, de los registros, las pestañas `vacantes`, `evaluaciones` y `busquedas`. Anotar las versiones de 02, 04, 05, 06/EMP-ID, 07 y 08.
-3. **Listar.** En Code, ejecutar `herramientas/buscar.py` y atender sus líneas «revisar» y `[FALLO]`. En Web, recorrer todas las páginas del acceso de la ficha. En ambos, BUS-COBERTURA.
+3. **Listar.** Ejecutar `herramientas/buscar.py` y atender sus líneas «revisar» y `[FALLO]` (BUS-COBERTURA).
 4. **Identificar.** Cruzar cada Job ID con `vacantes` (11/REG-IDENTIDAD): nueva, ya registrada o registrada y no observada esta vez.
 5. **Filtrar por familia ROL (05)** con título y departamento. Si la relación es dudosa, se incluye. Las de un tipo de puesto que 04 excluye siguen BUS-REGLAS.
-6. **Detalle de las relacionadas.** Leer el anuncio oficial y comprobar el ID; en Code ya viene en la salida del script. De ahí salen la vigencia (BUS-VIGENCIA), la ubicación y modalidad literales y los requisitos.
+6. **Detalle de las relacionadas.** El anuncio oficial, con el ID comprobado, ya viene en la salida del script. De ahí salen la vigencia (BUS-VIGENCIA), la ubicación y modalidad literales y los requisitos.
 7. **Registradas no observadas.** Solo las que tienen fila en `evaluaciones`: leer su detalle oficial para ver si siguen abiertas. Las demás solo se mencionan en la comparación.
 8. **Evaluar (08)** las relacionadas, reutilizando evaluaciones guardadas según 08/EVAL-REGISTRO.
 9. **Registrar** (BUS-REGISTRO).
@@ -127,7 +116,7 @@ Un agregador nunca basta para «Confirmada abierta». Una vacante vista solo en 
 
 **Comparación:**
 
-- Se compara con la última búsqueda comparable: misma empresa, mismo acceso y misma región. El mismo acceso leído desde otro canal es comparable (la misma API desde Code o Web).
+- Se compara con la última búsqueda comparable: misma empresa, mismo acceso y misma región. Una comprobación puntual no es comparable, porque no lista.
 - Se reportan IDs nuevos, IDs ya conocidos, IDs no observados esta vez (sin declararlos cerrados) y cambios de título, ubicación o modalidad.
 - La primera vez se registra «Sin búsqueda comparable».
 
@@ -139,9 +128,9 @@ Un agregador nunca basta para «Confirmada abierta». Una vacante vista solo en 
 
 | Pestaña | Qué se escribe |
 | --- | --- |
-| `busquedas` | Una fila por ejecución. `fecha_hora` con la hora si se conoce. `recursos_versiones`: versiones del paso 2. `fuentes_consultas_filtros`: las URL o formas usadas, con orden y filtros. `cobertura_limitaciones`: «N únicos de T, completa/incompleta; detalle M de K relacionadas»; si la fuente no publica total, «N únicos, sin total publicado; <comprobación>; detalle M de K». `no_revisado_pendientes` y `comparacion_anterior` según BUS-COBERTURA; desde Web, las empresas «Solo Code» van en `no_revisado_pendientes`. En Code, `fuentes_consultas_filtros` empieza con la versión del script |
+| `busquedas` | Una fila por ejecución. `fecha_hora` con la hora si se conoce. `recursos_versiones`: versiones del paso 2. `fuentes_consultas_filtros`: las URL o formas usadas, con orden y filtros. `cobertura_limitaciones`: «N únicos de T, completa/incompleta; detalle M de K relacionadas»; si la fuente no publica total, «N únicos, sin total publicado; <comprobación>; detalle M de K». `no_revisado_pendientes` y `comparacion_anterior` según BUS-COBERTURA. `fuentes_consultas_filtros` empieza con la versión del script |
 | `vacantes` | Una fila por cada vacante listada que no exista: campos según el mapeo de la ficha (06), `primera_deteccion` = fecha de la búsqueda. En las ya registradas, actualizar los campos que cambiaron y `ultima_observacion_id` |
-| `observaciones` | Una fila por vacante listada y por cada registrada no observada que se comprobó (paso 7). Si se leyó el detalle, la observación usa esa evidencia y su URL; si no, la del listado. `tipo_fuente`: `Oficial`. En Code, `fecha_verificacion` va sin hora: la del script es la de inicio, no la de cada lectura |
+| `observaciones` | Una fila por vacante listada y por cada registrada no observada que se comprobó (paso 7). Si se leyó el detalle, la observación usa esa evidencia y su URL; si no, la del listado. `tipo_fuente`: `Oficial`. `fecha_verificacion` va sin hora: la del script es la de inicio, no la de cada lectura |
 | `habilidades_vacante` | Solo vacantes relacionadas con detalle leído y no excluidas por «Tipo de puesto» (BUS-REGLAS), una fila por requisito con su tipo (08/EVAL-REQUISITOS). Si el conjunto no cambió respecto de lo registrado, no se agregan filas (11/REG-IDENTIDAD) |
 | `evaluaciones` | Una fila por evaluación nueva o rehecha (08/EVAL-REGISTRO) |
 | `informes` | Una fila por vacante de la tabla resumen (08/EVAL-INFORME), en su orden: `busqueda_id`, `vacante_id` y la `evaluacion_id` que muestra la tabla. Solo esas tres columnas (A:C); las demás se calculan. Se lee el bloque después para comprobar que no hay `#N/A` y que coincide con la tabla que se entrega |
@@ -149,3 +138,18 @@ Un agregador nunca basta para «Confirmada abierta». Una vacante vista solo en 
 Las vacantes no relacionadas quedan en `vacantes` y `observaciones`, sin requisitos ni evaluación.
 
 **Los módulos no se editan por una búsqueda.** Resultados, cobertura, comparación, evaluaciones y la tabla resumen viven solo en los registros (00, «Registros»). Un módulo se edita solo si cambia el método, una ficha (p. ej., un `[FALLO]` porque la API cambió de forma), el perfil o las preferencias.
+
+## BUS-PUNTUAL — Comprobación puntual
+
+Leer el anuncio oficial de una vacante, o de unas pocas que el titular nombra, sin recorrer ningún listado. Se hace en los dos canales (BUS-CANALES) y no sigue BUS-PASOS: no hay listado, cobertura ni comparación.
+
+- **Lectura:** en Code, la terminal pide el detalle oficial de cada vacante por la misma ruta que usa el adaptador de su plataforma (06/CAT-PLATAFORMAS), que su `robots.txt` permite, y comprueba su ID; `buscar.py` no lee una vacante suelta; en Web, según BUS-ACCESO-WEB. La vigencia sigue BUS-VIGENCIA.
+- **Desde Web:** lo que el titular quiera conservar (observación, requisitos o evaluación) queda en una nota para Code (00, «Cambios a los registros»).
+- **Registro, solo en Code:** como en BUS-REGISTRO, `agregar` con las filas nuevas y después `actualizar` con `ultima_observacion_id` y los campos que cambiaron en las vacantes ya registradas. La herramienta comprueba cada fila de la nota contra el esquema; si rechaza una, se corrige con el titular.
+
+| Pestaña | Qué se escribe |
+| --- | --- |
+| `busquedas` | Una fila por comprobación. `fecha_hora`: la de la lectura. `solicitud_alcance`: «Comprobación puntual» y las vacantes pedidas. `recursos_versiones`: las de los módulos usados, que la nota de Web trae. `fuentes_consultas_filtros`: las URL leídas y cómo se leyeron; desde Web, «Herramienta de lectura web del chat». `cobertura_limitaciones`: «Comprobación puntual, sin listado» y lo que no se pudo leer. `no_revisado_pendientes`: lo que quedó sin leer, o `Ninguno`. `comparacion_anterior`: «No comparable: comprobación puntual» |
+| `vacantes` | Solo si la vacante no está registrada: los campos leídos, `primera_deteccion` = fecha de la lectura. Su empresa necesita un EMP-ID en 06 (11/REG-CAMPOS) |
+| `observaciones` | Una fila por vacante leída. `fecha_verificacion`: la de la lectura, con hora si se conoce. `tipo_fuente`: `Oficial` si se leyó en su anuncio oficial; `Aportada por el titular` si el titular pegó el anuncio y no se encontró en el portal, sin `url_fuente`, con vigencia `No verificable` y el motivo «Anuncio pegado por el titular» |
+| `habilidades_vacante` y `evaluaciones` | Si la vacante se evaluó, según 08/EVAL-REGISTRO |

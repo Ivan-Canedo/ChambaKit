@@ -171,7 +171,7 @@ Llena `06_EMPRESAS_OBJETIVO.md` con las empresas donde el titular quiere buscar,
       ```
 
       Debe salir `[OK]`, o `[SIN TOTAL]` con la comprobación de su ficha. Si el `[FALLO]` dice que no se resolvió el nombre o que se negó la conexión, sigue «Comandos sin red» antes de tocar la ficha. Con otro `[FALLO]`, corrige la configuración o el adaptador y repítela. Revisa las líneas «revisar ubicación»: si una nombra de otra forma un lugar que el titular ya aceptó, como una abreviatura o su nombre en inglés, propónle agregar esa forma al bloque de 04 (paso 4, «Cómo se escriben»); si es otro lugar, no lo propongas. Si el listado trae miles de vacantes, ofrécele una `consulta` más estrecha. Completa la ficha con lo que comprobaste (ubicaciones, remotas, cobertura) y anota el resultado en su primera línea. La búsqueda de prueba no se registra.
-4. **Revisión:** muéstrale el catálogo, con la plataforma y el canal de cada empresa, y lo que quedó pendiente.
+4. **Revisión:** muéstrale el catálogo, con la plataforma de cada empresa, y lo que quedó pendiente.
 5. **Cierre:** llena la línea **Estado** de 06 y súbelo de versión. Las filas de 06 y 07 en ESTADO quedan «Configurado», con los siguientes pasos «Agregar o retirar empresas según CAT-REGLAS» para 06 y «Buscar vacantes (BUS-PASOS)» para 07. Si no dio ninguna empresa, el catálogo queda vacío y las dos filas quedan «Configurado» con esos mismos siguientes pasos; dile que el script no tiene dónde buscar hasta que agregue una, con este paso o cuando quiera.
 
 ## Paso 8: Registros

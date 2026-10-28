@@ -1,11 +1,13 @@
 # 10 — Análisis de tendencias
 
-**Versión:** 1.0 — 2026-10-17 — Plantilla inicial.
+**Versión:** 1.1 — 2026-10-27 — El análisis se hace solo en el canal Code.
 **Estado:** reglas de la plantilla; sin datos ni resultados.
 
 ## Responsabilidad
 
 Distinguir habilidades frecuentes, posibles cambios temporales de demanda y habilidades complementarias que podría convenir aprender.
+
+**Solo en Code:** el análisis lee el archivo de registros, porque necesita todos los requisitos y el histórico de observaciones, que la instantánea del canal Web no trae (11/REG-INSTANTANEA).
 
 ## Reglas
 

@@ -1,6 +1,6 @@
 # 08 — Evaluación de vacantes
 
-**Versión:** 1.2 — 2026-10-27 — La herramienta de registros toma el umbral de «antigua» de EVAL-ACUERDOS; EVAL-INFORME y EVAL-REGISTRO ya no hablan de la hoja.
+**Versión:** 1.3 — 2026-10-27 — La evaluación desde Web usa la descripción leída o pegada y termina en una nota para Code (EVAL-FLUJO).
 **Estado:** método de la plantilla. Las condiciones salen de 04 y las familias de 05; queda listo con el paso 5 de `/configurar` (Habilidades y roles).
 **Evaluaciones vigentes desde:** 1.0. Sube a la versión nueva solo si el cambio altera la clasificación de requisitos, las categorías, el nivel, la cobertura o las condiciones. Un cambio de 04 no lo sube: lo cubre la regla de EVAL-REGISTRO.
 
@@ -40,6 +40,8 @@ Comparar los requisitos y condiciones de una vacante con la trayectoria y las pr
 6. **Registrar** cada evaluación en la pestaña `evaluaciones` (EVAL-REGISTRO), y la tabla resumen en `informes` (EVAL-INFORME).
 
 No se gastan preguntas ni detalle en vacantes que el titular no pidió.
+
+**Desde Web:** se evalúa una vacante que el titular nombra o pega, con los pasos 2, 4 y 5. Si la instantánea trae su evaluación y sigue vigente (EVAL-REGISTRO), se usa esa. Si no, se evalúa con la descripción leída en su anuncio oficial (07/BUS-ACCESO-WEB) o con la que pegó el titular. Web no registra: si el titular quiere conservarla, la observación, los requisitos y la evaluación van en una nota para Code (00, «Cambios a los registros»), que Code aplica según 07/BUS-PUNTUAL.
 
 ## EVAL-REQUISITOS — Extracción y tipo
 

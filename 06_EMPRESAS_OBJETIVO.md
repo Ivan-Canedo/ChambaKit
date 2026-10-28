@@ -1,12 +1,12 @@
 # 06 — Empresas objetivo y fichas
 
-**Versión:** 1.1 — 2026-10-27 — Dar de alta una empresa ya no toca los registros: la herramienta lee el catálogo.
+**Versión:** 1.2 — 2026-10-27 — Sale el canal del catálogo y de las fichas; una ficha puede decir cómo leer el detalle de una vacante desde Web.
 **Estado:** plantilla sin empresas. Las agrega el paso 7 de `/configurar` (Empresas), cada una con su ficha y la configuración de su plataforma de reclutamiento.
 
 ## CAT-EMPRESAS — Catálogo
 
-| ID | Empresa | Estado | Canal | Versión de ficha | Fecha de comprobación |
-| --- | --- | --- | --- | --- | --- |
+| ID | Empresa | Estado | Versión de ficha | Fecha de comprobación |
+| --- | --- | --- | --- | --- |
 
 El ID es una referencia interna, no una razón social. Los nombres alternativos y la entidad contratante van en cada ficha. No fusionar empresas por similitud de nombre.
 
@@ -17,7 +17,6 @@ El script de búsqueda (07/BUS-ACCESO-CODE) toma los IDs de esta tabla: sin argu
 - **Una empresa = una fila + una ficha** `## EMP-<ID> — <Nombre>` en este archivo. Al agregar una: asignar un ID nuevo, sin reutilizar (`EMP-` más un nombre corto en mayúsculas, con letras sin acentos, dígitos y guiones); añadir la fila y escribir la ficha según FICHA-PLANTILLA, dejando como pendiente lo no comprobado. La herramienta de registros lee el catálogo, así que el ID vale para `empresa_id` desde que está aquí (11/REG-CAMPOS).
 - **Estado:** «Objetivo» para las que el titular quiere seguir; «Explorada» para una que se conserva solo porque tiene vacantes registradas. Las dos se buscan por defecto, así que una explorada también lleva su configuración.
 - **Plataforma:** identificar la plataforma de reclutamiento del portal oficial (CAT-PLATAFORMAS dice cómo se reconoce cada una). Si el script tiene su adaptador, basta el bloque de configuración de la ficha. Si no lo tiene, o el portal es un sitio propio, buscar la API que usa el portal y revisar su `robots.txt` antes de construir un adaptador en `herramientas/buscar.py` de esta copia; después, describir su configuración en CAT-PLATAFORMAS. Sin una ruta que el `robots.txt` permita, la empresa no entra al catálogo.
-- **Canal (07/BUS-CANALES):** «Web y Code» si el listado y el detalle se leen con GET; «Solo Code» si el listado exige POST o navegador, o si el texto visible no trae los campos del mapeo (07/BUS-ACCESO-WEB).
 - **Comprobación:** al dar de alta una empresa o cambiar su configuración, correr el script solo con su ID; debe pasar sus comprobaciones (`[OK]`, o `[SIN TOTAL]` con la comprobación de su ficha). Esa búsqueda de prueba no se registra.
 - **Al editar una ficha:** actualizar su versión y su fecha de comprobación. La fecha de edición no es fecha de verificación.
 - **Empresas nuevas:** se buscan según 07/BUS-REGLAS; una explorada entra al catálogo solo si el titular la acepta.
@@ -35,7 +34,6 @@ Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo 
 - **Listado:** con la faceta de país del portal, por los nombres de `paises` de 04 de cada país de `localidades`. Si el portal no tiene faceta de país, con los valores de su faceta de ubicación que nombran uno de esos países como una de sus partes («País - Ciudad», «Ciudad, País») o una localidad aceptada.
 - **Remoto:** con la faceta de remoto del portal, acotada a los países del remoto si el alcance es `"paises"`. Si no la tiene, con sus ubicaciones «Remote …». Si no hay ninguna de las dos, el script lo avisa con una línea «revisar».
 - **`consulta`:** `{"facetas": {"<parámetro>": ["<nombre visible>"]}, "texto": "<búsqueda>"}`, con al menos uno de los dos. Reemplaza el listado por países; sirve para una empresa con miles de vacantes en un país grande. Los parámetros y los nombres son los del portal, que aparecen en `facets` de la respuesta del listado; el script busca sus IDs por nombre en cada ejecución y avisa con «revisar» si un nombre ya no aparece.
-- **Canal:** «Solo Code»: el listado es `POST <base>/jobs` y el GET devuelve error. El detalle es GET.
 - **Vigencia:** `canApply`. `true` = postulación activa; cualquier otro valor sale como «Revisar».
 - **Comprobación de ID:** la ruta del detalle termina en `_<jobReqId>`, a veces con un sufijo `-1` (republicación).
 
@@ -61,7 +59,6 @@ Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo 
   - **`ubicaciones`:** cada una es un listado aparte, con lo que se escribiría en el buscador de lugar; a una ciudad, el buscador le aplica su radio.
   - **`filtros`:** los `filterName` de `filterDef.allFilters` en la respuesta del listado, con sus opciones por valor o por nombre visible. El script avisa con «revisar» si una opción ya no aparece.
   - **`texto`:** la búsqueda libre del portal (`query`), que también trae vacantes parecidas.
-- **Canal:** «Web y Code»: el listado y el detalle son GET.
 - **Detalle:** `GET /api/pcsx/position_details?position_id=<id>&domain=<dominio>&hl=en`, con el `id` numérico del listado, no `displayJobId`.
 - **Vigencia:** `positionUserActions.applyAction.status`. `allowed` (postulación directa) o `log_in` (postulación tras iniciar sesión) = postulación activa; cualquier otro valor sale como «Revisar».
 - **Comprobación de ID:** el `id` del detalle es el pedido.
@@ -88,7 +85,6 @@ Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo 
   - **`texto`:** la búsqueda del portal (`query`).
 
   El filtro por departamento de la API no acepta nombres, así que la consulta no lo usa.
-- **Canal:** «Solo Code»: el listado es POST. El detalle es GET.
 - **Detalle:** `GET https://apply.workable.com/api/v2/accounts/<cuenta>/jobs/<shortcode>`.
 - **Vigencia:** `state`. `published` = publicada; cualquier otro valor sale como «Revisar».
 - **Comprobación de ID:** el `shortcode` del detalle es el pedido.
@@ -119,7 +115,7 @@ Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo 
 - **`consulta`:** `{"grupos": ["<nombre visible del grupo>"], "texto": "<búsqueda>"}`, con al menos uno de los dos. Reemplaza el listado de la región:
   - **`grupos`:** nombres de grupo del sitio de carreras (ubicaciones o departamentos), como aparecen en él. El script avisa con «revisar» si uno ya no aparece.
   - **`texto`:** la búsqueda del sitio (`search`), que es aproximada: también trae publicaciones que no corresponden.
-- **Canal:** «Solo Code»: el listado y la página son GET, pero su texto visible no trae el Job ID, la fecha ni el lugar de la página, que van en atributos y etiquetas `meta`.
+- **Detalle desde Web:** el texto visible de la página no trae el Job ID, la fecha ni el lugar, que van en atributos y etiquetas `meta`; esos campos quedan sin leer (07/BUS-ACCESO-WEB).
 - **Página de cada publicación:** `GET https://jobs.smartrecruiters.com/<empresa>/<id>`, en HTML.
 - **Vigencia:** el botón de postulación (`data-sr-track="apply"`). Presente = postulación activa; si falta, sale como «Revisar».
 - **Comprobación de ID:** el `link rel="canonical"` de la página termina en el ID pedido.
@@ -146,7 +142,7 @@ Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo 
 - **`consulta`:** `{"facetas": {"<faceta>": ["<nombre visible>"]}, "texto": "<búsqueda>"}`, con al menos uno de los dos. Reemplaza el listado por países:
   - **`facetas`:** `LOCATIONS`, `WORKPLACE_TYPES`, `CATEGORIES`, `ORGANIZATIONS` o `TITLES`, con los nombres de sus valores en la respuesta del listado (`locationsFacet`, `categoriesFacet`…). La API solo trae los valores más frecuentes de cada faceta. El script busca sus IDs por nombre en cada ejecución y avisa con «revisar» si un nombre ya no aparece.
   - **`texto`:** la búsqueda del sitio (`keyword`).
-- **Canal:** «Web y Code»: el listado y el detalle son GET y responden JSON. La URL lleva `;`, `,` y comillas (`%22`), que la herramienta web debe conservar.
+- **Detalle desde Web:** la URL del detalle lleva `;`, `,` y comillas (`%22`), que la herramienta web debe conservar.
 - **Detalle:** `GET https://<host>/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=ById;Id="<Id>",siteNumber=<sitio>`.
 - **Vigencia:** la API no trae un indicador de postulación. Sale `Confirmada abierta` por la presencia en el listado si `ExternalPostedEndDate` es nulo o futuro; con una fecha de cierre pasada, «Revisar».
 - **Comprobación de ID:** el `Id` del detalle es el pedido.
@@ -167,7 +163,7 @@ Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo 
 
 ## FICHA-PLANTILLA — Contenido de cada ficha
 
-Cada ficha es una sección `## EMP-<ID> — <Nombre>`. Su primera línea dice `**Ficha <versión>** — comprobada el <fecha> desde <canal>, con una búsqueda de prueba (<únicos> de <total>). Canal: **<canal>**.` Después van estas subsecciones, en este orden:
+Cada ficha es una sección `## EMP-<ID> — <Nombre>`. Su primera línea dice `**Ficha <versión>** — comprobada el <fecha>, con una búsqueda de prueba (<únicos> de <total>).` Después van estas subsecciones, en este orden:
 
 1. **`### Configuración`:** el bloque que lee el script, el primer bloque ```` ```json ```` de la subsección:
 
@@ -188,9 +184,9 @@ Cada ficha es una sección `## EMP-<ID> — <Nombre>`. Su primera línea dice `*
    Si el bloque falta o no sirve, el script reporta la empresa como `[FALLO]` y sigue con las demás.
 2. **`### Identidad`:** razón social, nombres alternativos y entidad contratante.
 3. **`### Portal`:** portal oficial y plataforma de reclutamiento, con las rutas comprobadas desde el sitio de la empresa y lo que permite su `robots.txt`, con fecha. La raíz de una plataforma no siempre es el buscador público.
-4. **`### Acceso`:** en Code, el adaptador; en Web, si el canal lo permite (07/BUS-ACCESO-WEB), las URL y sus formas alternativas. Solo lo que esta empresa cambie respecto de CAT-PLATAFORMAS: paginación, total, filtros, comprobación de ID o indicador de vigencia.
+4. **`### Acceso`:** solo lo que esta empresa cambie respecto de CAT-PLATAFORMAS: paginación, total, filtros, comprobación de ID o indicador de vigencia. Si el portal complica leer el anuncio de una vacante con la herramienta de lectura web, una línea opcional **Detalle desde Web:** dice cómo llegar a sus campos (07/BUS-ACCESO-WEB), por ejemplo, con una API de detalle en lugar de la página pública.
 5. **`### Sedes y región`:** ubicación literal y su relación con la región de 04, por separado. No trasladar equivalencias de otra empresa. Límites de cobertura observados, como remotas que el filtro no trae.
-6. **`### Campos y mapeo a la hoja`:** los de su plataforma (CAT-PLATAFORMAS); anotar solo lo que cambie en esta empresa y cuál es la fecha de publicación confiable.
+6. **`### Campos y mapeo a los registros`:** los de su plataforma (CAT-PLATAFORMAS); anotar solo lo que cambie en esta empresa y cuál es la fecha de publicación confiable.
 7. **`### Vocabulario observado`:** familias de puestos y vocabulario propio, a partir de 02, 04 y 05; no inferir experiencia por la empresa.
 8. **`### Fuentes y limitaciones`:** fuentes, fecha de comprobación, cobertura de la búsqueda de prueba y pendientes.
 

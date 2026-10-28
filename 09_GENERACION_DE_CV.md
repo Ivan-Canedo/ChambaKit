@@ -1,6 +1,6 @@
 # 09 — Generación de CV
 
-**Versión:** 1.1 — 2026-10-18 — El canal Web necesita Claude; el archivo se genera en el canal Code con cualquier agente.
+**Versión:** 1.2 — 2026-10-27 — Desde Web, la adaptación toma los requisitos y la evaluación de la instantánea (CV-ENTRADAS).
 **Estado:** método de la plantilla, con el diseño por defecto. El color del CV es un dato del titular (CV-PLANTILLA).
 
 ## CV-ALCANCE — Responsabilidad
@@ -29,6 +29,7 @@ Adaptar el contenido a una vacante y producir el formato solicitado que se pueda
 - **03:** CV-ES, CV-EN, CV-OPCIONALES y CV-TRAZABILIDAD.
 - **Descripción de la vacante:** empresa, título, Job ID si existe, ubicación literal, requisitos y fuente con fecha. Si el titular pega el texto, marcarlo como aportado por él; no inventar URL ni verificación oficial.
 - **Evaluación (08):** el detalle de la vacante (EVAL-INFORME): núcleos, requisitos con tipo, categoría, evidencia y límite, y el apartado «Para el CV». Si la vacante no tiene detalle, hacerlo con 08 antes de adaptar; no inventar un nivel ni categorías para poder adaptar.
+- **Desde Web:** los requisitos y la última evaluación de una vacante registrada están en su sección de la instantánea (`vacantes.md`, 11/REG-INSTANTANEA). Si la vacante no está ahí, se evalúa desde Web con 08/EVAL-FLUJO.
 - **04:** solo para revisar condiciones; no pasa al CV.
 - **Registros, pestaña `documentos` (11):** para registrar el documento generado.
 
@@ -48,7 +49,7 @@ Adaptar el contenido a una vacante y producir el formato solicitado que se pueda
 4. **Redactar:** escribir primero la experiencia y al final la síntesis (CV-SINTESIS). Cada frase indica actividad, objeto técnico y contribución o resultado respaldado. Los términos de la vacante se usan solo si describen hechos reales. Un resultado cualitativo basta; no inventar métricas. Separar el cargo contractual del título descriptivo, sin agregar seniority.
 5. **Revisar fidelidad:** contrastar con las fuentes y explicar los cambios relevantes. Los hechos nuevos se proponen para 02 con fuente y fecha; no se sobrescribe al adaptar.
 6. **Presentar y exportar:** escribir el CV adaptado en Markdown con el formato de 03 y generar PDF y DOCX con CV-PLANTILLA (CV-HERRAMIENTAS). Si excede la extensión de CV-PLANTILLA, compactar como indica ahí y repetir. No prometer formatos que no se puedan generar en el canal.
-7. **Comprobar y entregar:** aplicar CV-CONTROLES al archivo exacto y entregar con una nota breve de cambios y limitaciones. Si el titular lo va a usar, guardarlo en `muestras_cv/` y registrarlo en `documentos` (CV-ACUERDOS).
+7. **Comprobar y entregar:** aplicar CV-CONTROLES al archivo exacto y entregar con una nota breve de cambios y limitaciones. Si el titular lo va a usar, guardarlo en `muestras_cv/` y registrarlo en `documentos` (CV-ACUERDOS); desde Web, el archivo se genera en Code y su registro va en la nota para Code (00, «Cambios a los registros»).
 
 Se puede trabajar el contenido aunque falten presentación o contacto; un borrador incompleto se identifica como borrador.
 
