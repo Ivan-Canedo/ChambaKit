@@ -1,6 +1,6 @@
 # 07 — Método de búsqueda
 
-**Versión:** 1.3 — 2026-10-27 — Las búsquedas, solo en Code; las comprobaciones puntuales, en los dos canales (BUS-PUNTUAL). BUS-ACCESO-WEB queda para leer una vacante desde Web.
+**Versión:** 1.4 — 2026-10-27 — Una búsqueda se registra con `importar` y un archivo de decisiones, y después con `agregar` (BUS-PASOS, BUS-REGISTRO).
 **Estado:** método de la plantilla. Queda listo con la región de 04 y las fichas de 06, en el paso 7 de `/configurar` (Empresas).
 
 ## BUS-ALCANCE — Responsabilidad
@@ -78,14 +78,14 @@ Aplica a una comprobación puntual desde el canal Web (BUS-PUNTUAL). La terminal
 ## BUS-PASOS — Ejecución
 
 1. **Encargo.** Empresas y región. Por defecto, todas las de 06 con la región de 04: sus localidades, más el remoto según su alcance.
-2. **Preparar.** Leer la ficha de cada empresa en 06 (acceso, ubicaciones, campos) y, de los registros, las pestañas `vacantes`, `evaluaciones` y `busquedas`. Anotar las versiones de 02, 04, 05, 06/EMP-ID, 07 y 08.
-3. **Listar.** Ejecutar `herramientas/buscar.py` y atender sus líneas «revisar» y `[FALLO]` (BUS-COBERTURA).
-4. **Identificar.** Cruzar cada Job ID con `vacantes` (11/REG-IDENTIDAD): nueva, ya registrada o registrada y no observada esta vez.
-5. **Filtrar por familia ROL (05)** con título y departamento. Si la relación es dudosa, se incluye. Las de un tipo de puesto que 04 excluye siguen BUS-REGLAS.
-6. **Detalle de las relacionadas.** El anuncio oficial, con el ID comprobado, ya viene en la salida del script. De ahí salen la vigencia (BUS-VIGENCIA), la ubicación y modalidad literales y los requisitos.
-7. **Registradas no observadas.** Solo las que tienen fila en `evaluaciones`: leer su detalle oficial para ver si siguen abiertas. Las demás solo se mencionan en la comparación.
+2. **Preparar.** Leer la ficha de cada empresa en 06 (acceso, ubicaciones, campos). Anotar las versiones de 02, 04, 05, 06/EMP-ID, 07 y 08.
+3. **Listar.** Ejecutar `herramientas/buscar.py` con `--salida` en el directorio temporal de la sesión y atender sus líneas «revisar» y `[FALLO]` (BUS-COBERTURA) en el archivo de decisiones (BUS-REGISTRO).
+4. **Registrar el listado** con `importar` (BUS-REGISTRO). La herramienta cruza cada vacante con `vacantes` (11/REG-IDENTIDAD), la registra con su observación y compara con la última búsqueda comparable. Devuelve la lista compacta de las vacantes de la búsqueda.
+5. **Filtrar por familia ROL (05)** con el título y el departamento de la lista compacta. Si la relación es dudosa, se incluye. Las de un tipo de puesto que 04 excluye siguen BUS-REGLAS.
+6. **Detalle de las relacionadas.** El anuncio oficial, con el ID comprobado, ya viene en la `descripcion` de la salida del script, junto al Job ID o la URL de la vacante. De ahí salen la vigencia (BUS-VIGENCIA), la ubicación y modalidad literales y los requisitos.
+7. **Registradas no observadas.** Las que `comparacion_anterior` da como no observadas esta vez. Solo las que tienen fila en `evaluaciones`: leer su detalle oficial para ver si siguen abiertas. Las demás solo se mencionan en la comparación.
 8. **Evaluar (08)** las relacionadas, reutilizando evaluaciones guardadas según 08/EVAL-REGISTRO.
-9. **Registrar** (BUS-REGISTRO).
+9. **Registrar el juicio** con `agregar` y `actualizar` (BUS-REGISTRO): requisitos, evaluaciones, `informes` y las observaciones del paso 7.
 10. **Entregar** la tabla resumen de 08/EVAL-INFORME, más dos líneas: cobertura y comparación.
 
 ## BUS-VIGENCIA — Evidencia mínima por estado
@@ -116,24 +116,56 @@ Un agregador nunca basta para «Confirmada abierta». Una vacante vista solo en 
 
 **Comparación:**
 
-- Se compara con la última búsqueda comparable: misma empresa, mismo acceso y misma región. Una comprobación puntual no es comparable, porque no lista.
+- Se compara con la última búsqueda comparable: misma empresa, mismo acceso y misma región, es decir, los mismos listados con los mismos filtros, aunque cambien sus conteos. Una comprobación puntual no es comparable, porque no lista.
 - Se reportan IDs nuevos, IDs ya conocidos, IDs no observados esta vez (sin declararlos cerrados) y cambios de título, ubicación o modalidad.
 - La primera vez se registra «Sin búsqueda comparable».
+- `importar` la calcula al registrar la búsqueda (BUS-REGISTRO).
 
 ## BUS-REGISTRO — Escritura en los registros
 
-**En la hoja,** se escribe con el conector de Google Sheets, leyendo cada pestaña antes y después (00 y 11). Orden: `busquedas` → `vacantes` → `observaciones` → actualización de `vacantes` → `habilidades_vacante` → `evaluaciones` → `informes`. Cada pestaña se escribe en un solo bloque. Si el bloque es demasiado grande para una llamada del conector, se escribe en tramos consecutivos del mismo rango, sin escribir otra pestaña entre ellos, y después se lee el bloque completo para compararlo. Si la pestaña no tiene filas suficientes, se insertan antes dentro del rango validado. Si el conector falla, las filas se entregan separadas por tabulador, después de la tabla resumen.
+Con `herramientas/registros.py` (11/REG-LOCAL), en tres pasos. Las filas del listado no pasan por el agente: él solo aporta lo que pide juicio.
 
-**En modo local,** con `herramientas/registros.py` (11/REG-LOCAL), en dos llamadas: `agregar` con todas las filas nuevas de la búsqueda, de todas las pestañas, y después `actualizar` con los cambios a las vacantes ya registradas. Si la herramienta rechaza una fila, no escribe ninguna: se corrigen las filas y se repite la llamada. Al final, `informe` con el `busqueda_id` da la tabla resumen, que no debe tener `#N/A` y es la que se entrega.
+1. **`importar`** con la salida JSON de `buscar.py` y un archivo de decisiones, los dos en el directorio temporal de la sesión (paso 4 de BUS-PASOS):
+
+   ```sh
+   .venv/bin/python -I herramientas/registros.py importar <salida>.json <decisiones>.json
+   ```
+
+   Escribe la fila de `busquedas`, las vacantes nuevas, una observación por vacante listada y los cambios a las ya registradas. Devuelve el `busqueda_id` y una línea `VAC-ID · título · departamento` por vacante de la búsqueda, para el paso 5.
+2. **`agregar`** con las filas que piden juicio, de todas las pestañas en una sola llamada: `habilidades_vacante`, `evaluaciones`, `informes` y las observaciones del paso 7, con el `busqueda_id` de esta búsqueda. Después, `actualizar` con el `ultima_observacion_id` y los campos que cambiaron en las vacantes del paso 7.
+3. **`informe`** con el `busqueda_id`: da la tabla resumen, que no debe tener `#N/A` y es la que se entrega.
+
+Si la herramienta rechaza la entrada, no escribe nada y dice todos los errores: se corrigen y se repite la llamada. `importar` rechaza también una salida que ya importó.
+
+**Archivo de decisiones:** lo que el script no sabe.
+
+```json
+{
+  "solicitud_alcance": "Todas las empresas de 06 con la región de 04",
+  "recursos_versiones": "07 v1.4 | 06/EMP-<ID> v1.0 | 04 v1.1",
+  "no_revisado_pendientes": "Ninguno",
+  "revisar": {
+    "EMP-<ID>": {
+      "<Job ID>": {"region_relacionada": "Dentro", "motivo_region": "<por qué>"},
+      "<URL de una sin Job ID>": {"estado_vigencia": "No verificable", "motivo": "<lo que pasó>"}
+    }
+  }
+}
+```
+
+- **`revisar`:** una decisión por cada línea «revisar ubicación» (`region_relacionada` con `motivo_region`) y por cada «revisar vigencia» (`estado_vigencia` con `motivo`, según BUS-VIGENCIA). Cada vacante se nombra como en su línea: por su Job ID o, sin él, por su URL. Una requisición con varias publicaciones (su línea «revisar» lo dice) se registra como una sola vacante, con todas sus ubicaciones, y pide su región. Una decisión también corrige una vacante sin línea «revisar», por ejemplo con la vigencia que se vio en su detalle.
+- **Líneas «revisar» de una empresa,** como un filtro que el portal no ofrece: `importar` las copia a la cobertura. Lo que dejan sin revisar va en `no_revisado_pendientes`.
+- **`[FALLO]`:** cada empresa que falló se nombra, por su EMP-ID, en `no_revisado_pendientes`.
+- **Sin decisión:** si queda una línea «revisar» sin decidir o un `[FALLO]` sin declarar, `importar` no escribe nada.
 
 | Pestaña | Qué se escribe |
 | --- | --- |
-| `busquedas` | Una fila por ejecución. `fecha_hora` con la hora si se conoce. `recursos_versiones`: versiones del paso 2. `fuentes_consultas_filtros`: las URL o formas usadas, con orden y filtros. `cobertura_limitaciones`: «N únicos de T, completa/incompleta; detalle M de K relacionadas»; si la fuente no publica total, «N únicos, sin total publicado; <comprobación>; detalle M de K». `no_revisado_pendientes` y `comparacion_anterior` según BUS-COBERTURA. `fuentes_consultas_filtros` empieza con la versión del script |
-| `vacantes` | Una fila por cada vacante listada que no exista: campos según el mapeo de la ficha (06), `primera_deteccion` = fecha de la búsqueda. En las ya registradas, actualizar los campos que cambiaron y `ultima_observacion_id` |
-| `observaciones` | Una fila por vacante listada y por cada registrada no observada que se comprobó (paso 7). Si se leyó el detalle, la observación usa esa evidencia y su URL; si no, la del listado. `tipo_fuente`: `Oficial`. `fecha_verificacion` va sin hora: la del script es la de inicio, no la de cada lectura |
-| `habilidades_vacante` | Solo vacantes relacionadas con detalle leído y no excluidas por «Tipo de puesto» (BUS-REGLAS), una fila por requisito con su tipo (08/EVAL-REQUISITOS). Si el conjunto no cambió respecto de lo registrado, no se agregan filas (11/REG-IDENTIDAD) |
-| `evaluaciones` | Una fila por evaluación nueva o rehecha (08/EVAL-REGISTRO) |
-| `informes` | Una fila por vacante de la tabla resumen (08/EVAL-INFORME), en su orden: `busqueda_id`, `vacante_id` y la `evaluacion_id` que muestra la tabla. Solo esas tres columnas (A:C); las demás se calculan. Se lee el bloque después para comprobar que no hay `#N/A` y que coincide con la tabla que se entrega |
+| `busquedas` | `importar`, una fila por ejecución. `fecha_hora`: la de inicio del script. `solicitud_alcance`, `recursos_versiones` (las versiones del paso 2) y `no_revisado_pendientes` (BUS-COBERTURA): de las decisiones. `fuentes_consultas_filtros`: la versión del script y, por empresa, el acceso, cada listado con sus filtros y conteos, y cómo se revisaron las remotas. `cobertura_limitaciones`, por empresa: «EMP-ID: N únicos de T, completa» o «incompleta»; si la fuente no publica total, «N únicos, sin total publicado; <comprobación de la ficha>»; después, «detalle leído en M de K» y sus líneas «revisar». `comparacion_anterior`: según BUS-COBERTURA, por empresa: «EMP-ID, contra BUS-…: nuevos …; ya conocidos …; no observados esta vez, sin declararlos cerrados: …; cambios: VAC-… (columnas)» |
+| `vacantes` | `importar`: una fila por cada vacante listada que no exista, con los campos de la salida, la región decidida y `primera_deteccion` = fecha de la búsqueda; en las ya registradas, los campos que cambiaron y `ultima_observacion_id`. Las del paso 7, con `actualizar` |
+| `observaciones` | `importar`: una fila por vacante listada, con `tipo_fuente` `Oficial`, la vigencia del script o la decidida y su URL. `fecha_verificacion` va sin hora: la del script es la de inicio, no la de cada lectura. El `motivo` agrega la región decidida con su motivo y cada cambio como «antes → ahora» (11/REG-IDENTIDAD). Las del paso 7, con `agregar`: la evidencia de su detalle y su URL |
+| `habilidades_vacante` | `agregar`. Solo vacantes relacionadas con detalle leído y no excluidas por «Tipo de puesto» (BUS-REGLAS), una fila por requisito con su tipo (08/EVAL-REQUISITOS). Si el conjunto no cambió respecto de lo registrado, no se agregan filas (11/REG-IDENTIDAD) |
+| `evaluaciones` | `agregar`. Una fila por evaluación nueva o rehecha (08/EVAL-REGISTRO) |
+| `informes` | `agregar`. Una fila por vacante de la tabla resumen (08/EVAL-INFORME), en su orden: `busqueda_id`, `vacante_id` y la `evaluacion_id` que muestra la tabla. Las demás columnas las calcula `informe` |
 
 Las vacantes no relacionadas quedan en `vacantes` y `observaciones`, sin requisitos ni evaluación.
 
@@ -145,7 +177,7 @@ Leer el anuncio oficial de una vacante, o de unas pocas que el titular nombra, s
 
 - **Lectura:** en Code, la terminal pide el detalle oficial de cada vacante por la misma ruta que usa el adaptador de su plataforma (06/CAT-PLATAFORMAS), que su `robots.txt` permite, y comprueba su ID; `buscar.py` no lee una vacante suelta; en Web, según BUS-ACCESO-WEB. La vigencia sigue BUS-VIGENCIA.
 - **Desde Web:** lo que el titular quiera conservar (observación, requisitos o evaluación) queda en una nota para Code (00, «Cambios a los registros»).
-- **Registro, solo en Code:** como en BUS-REGISTRO, `agregar` con las filas nuevas y después `actualizar` con `ultima_observacion_id` y los campos que cambiaron en las vacantes ya registradas. La herramienta comprueba cada fila de la nota contra el esquema; si rechaza una, se corrige con el titular.
+- **Registro, solo en Code:** sin `importar`, que es para la salida de `buscar.py`: `agregar` con las filas nuevas y después `actualizar` con `ultima_observacion_id` y los campos que cambiaron en las vacantes ya registradas. La herramienta comprueba cada fila de la nota contra el esquema; si rechaza una, se corrige con el titular.
 
 | Pestaña | Qué se escribe |
 | --- | --- |

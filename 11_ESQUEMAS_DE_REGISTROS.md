@@ -1,6 +1,6 @@
 # 11 — Esquema de registros
 
-**Versión:** 1.3 — 2026-10-27 — Un solo lugar, el archivo de registros (REG-LUGAR); salen REG-VALIDACION, las fórmulas del bloque y `canal`.
+**Versión:** 1.4 — 2026-10-27 — REG-LOCAL documenta `importar`, que registra una búsqueda desde la salida de `buscar.py`.
 **Estado:** esquema de la plantilla. El paso 8 de `/configurar` (Registros) crea el archivo de registros desde el bloque de REG-ESQUEMA.
 
 ## Responsabilidad
@@ -388,7 +388,11 @@ El archivo `ChambaKit_Registros.xlsx` (el `nombre` del bloque) está en la raíz
 En Windows, el Python es `.venv\Scripts\python.exe`. `--help` da las órdenes y la forma de su entrada, que va por stdin o en un archivo del directorio temporal de la sesión, nunca de la copia.
 
 - **Creación:** `crear`, desde el bloque, en el paso 8 de `/configurar`. Lleva las pestañas y columnas del bloque, salvo las calculadas de `informes`, que no se guardan. La validación está en la herramienta, y sus pruebas automáticas la cubren.
-- **Escritura:** `agregar` y `actualizar` comprueban cada fila que escriben contra el bloque: tipos, listas, obligatoriedad, IDs únicos y referencias. Si una fila no cumple, no escriben ninguna y dicen qué corregir. Solo comprueban las filas que escriben: un cambio no vuelve a comprobar las filas que citan a la cambiada. Las referencias se resuelven contra lo ya registrado más lo de la misma llamada, así que una búsqueda se registra en dos llamadas (07/BUS-REGISTRO): `agregar` con todas sus filas nuevas, de todas las pestañas, y `actualizar` con los cambios a las filas ya registradas. Después de escribir, las dos regeneran la instantánea (REG-INSTANTANEA); si rechazan la entrada, no la tocan. `instantanea` la regenera a pedido, por ejemplo si alguien la borró o la editó.
+- **Escritura:** tres órdenes, que comprueban cada fila que escriben contra el bloque: tipos, listas, obligatoriedad, IDs únicos y referencias. Si una fila no cumple, no escriben ninguna y dicen todos los errores. Solo comprueban las filas que escriben: un cambio no vuelve a comprobar las filas que citan a la cambiada. Las referencias se resuelven contra lo ya registrado más lo de la misma llamada.
+  - `importar` registra una búsqueda desde la salida JSON de `buscar.py` y un archivo de decisiones (07/BUS-REGISTRO), sin que el agente genere sus filas. Escribe la fila de `busquedas`, con la cobertura y la comparación con la última búsqueda comparable, las vacantes nuevas y una observación por vacante listada. En las ya registradas, que identifica por REG-IDENTIDAD, actualiza los campos que cambiaron y `ultima_observacion_id`. No escribe nada si queda una línea «revisar» sin decisión o un `[FALLO]` sin declarar. Devuelve el `busqueda_id` y una lista compacta de las vacantes (ID, título y departamento).
+  - `agregar` escribe filas nuevas de varias pestañas a la vez: en una búsqueda, los requisitos, las evaluaciones y `informes`, que piden juicio.
+  - `actualizar` cambia columnas de filas ya registradas, por su ID.
+- **Instantánea:** las tres órdenes la regeneran después de escribir (REG-INSTANTANEA); si rechazan la entrada, no la tocan. `instantanea` la regenera a pedido, por ejemplo si alguien la borró o la editó.
 - **Lectura:** `leer` da una pestaña completa o las filas de unos IDs. `informe` da la tabla resumen de una búsqueda: sus filas de `informes` con las columnas calculadas de REG-CAMPOS, a la fecha de hoy en la zona horaria de 04 y con el umbral de «antigua» de 08/EVAL-ACUERDOS.
 - **Encabezados:** la herramienta los compara con el bloque en cada uso y se detiene si no coinciden (REG-DECISIONES, «Encabezados»).
 - **Historial y respaldo:** git. El archivo se versiona en la copia, así que no se ignora. Al cerrar una sesión que lo modificó, el agente le ofrece al titular un commit con él y, si la copia tiene remoto privado, el push.

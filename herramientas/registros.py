@@ -5,6 +5,7 @@ Uso, con el Python del entorno virtual de la copia (en Windows, .venv\\Scripts\\
     .venv/bin/python -I herramientas/registros.py crear
     .venv/bin/python -I herramientas/registros.py agregar [FILAS.json]
     .venv/bin/python -I herramientas/registros.py actualizar [CAMBIOS.json]
+    .venv/bin/python -I herramientas/registros.py importar SALIDA.json DECISIONES.json
     .venv/bin/python -I herramientas/registros.py leer PESTAÑA [--id ID ...] [--columna COLUMNA]
     .venv/bin/python -I herramientas/registros.py informe BUS-ID
     .venv/bin/python -I herramientas/registros.py instantanea
@@ -18,15 +19,24 @@ sus columnas guardadas: las calculadas de informes no se guardan, las da la orde
   observación van juntas.
 - actualizar: columnas de filas ya registradas, {pestaña: [{columna_id: ID, columna: texto nuevo}]}. El
   ID no cambia; el texto vacío borra el valor.
+- importar: una búsqueda desde la salida JSON de buscar.py (07/BUS-REGISTRO), sin pasar sus filas por el agente.
+  Crea su fila de busquedas, con la cobertura y la comparación con la última búsqueda comparable; las vacantes
+  nuevas, con primera_deteccion = la fecha de la búsqueda; una observación por vacante listada, y actualiza en las
+  ya registradas (11/REG-IDENTIDAD) los campos que cambiaron y ultima_observacion_id. Las decisiones son
+  {"solicitud_alcance": texto, "recursos_versiones": texto, "no_revisado_pendientes": texto,
+   "revisar": {EMP-ID: {Job ID o URL, como en la línea «revisar»: {"region_relacionada": valor, "motivo_region":
+   texto, "estado_vigencia": valor, "motivo": texto}}}}; cada línea «revisar ubicación» pide su región y cada
+  «revisar vigencia», su estado, y una empresa en [FALLO] se nombra en no_revisado_pendientes. Da el busqueda_id y
+  una línea «VAC-ID · título · departamento» por vacante de la búsqueda.
 - leer: las filas de una pestaña, o solo las que tienen esos IDs en la primera columna o en --columna.
 - informe: la tabla resumen de una búsqueda (08/EVAL-INFORME), con las columnas calculadas de informes
   (11/REG-CAMPOS) a la fecha de hoy en la zona horaria de 04 y con el umbral de «antigua» de 08/EVAL-ACUERDOS.
 - instantanea: regenera completa la instantánea que lee el canal Web (11/REG-INSTANTANEA), en instantanea/:
   informes.md, con las últimas 10 búsquedas y su tabla resumen, y vacantes.md, con una sección por vacante
-  evaluada cuya última observación no es Cerrada. Agregar y actualizar la regeneran después de escribir. Si
+  evaluada cuya última observación no es Cerrada. Agregar, actualizar e importar la regeneran después de escribir. Si
   pasa de 300 KB, lo avisa en stderr sin fallar.
 
-Agregar y actualizar comprueban cada fila que escriben contra el esquema: tipos, listas
+Agregar, actualizar e importar comprueban cada fila que escriben contra el esquema: tipos, listas
 (empresa_id, contra 06/CAT-EMPRESAS), obligatoriedad, IDs únicos y referencias. Con un solo error no
 escriben nada: dicen todos en stderr y terminan con código 1. El JSON va a stdout. Si falta la
 configuración, el archivo u openpyxl, o se pide una pestaña o búsqueda inexistente, termina con código 2
@@ -203,7 +213,7 @@ def leer_entrada(archivo):
     except OSError as e:
         rechazar([f"{archivo}: no se pudo leer ({e.strerror})."])
     except ValueError as e:
-        rechazar([f"Las filas no son JSON válido ({e})."])
+        rechazar([f"{'La entrada' if archivo == '-' else archivo}: no es JSON válido ({e})."])
 
 
 def filas_de_entrada(esquema, entrada):
@@ -325,15 +335,31 @@ def agregar(esquema, entrada):
     if errores:
         rechazar(errores)
     vistas = instantanea(esquema, todas)
+    anexar(libro, nuevas)
+    guardar(libro, ruta_archivo(esquema))
+    guardar_instantanea(vistas)
+    return {"agregadas": {nombre: len(filas) for nombre, filas in nuevas.items()}}
+
+
+def anexar(libro, nuevas):
+    """Escribe en el libro las filas nuevas, {pestaña: [fila con todas sus columnas, en orden]}, al final."""
     for nombre, filas in nuevas.items():
         pestana = libro[nombre]
         for fila in filas:
             numero = pestana.max_row + 1
             for i, valor in enumerate(fila.values(), 1):
                 escribir(pestana.cell(numero, i), valor)
-    guardar(libro, ruta_archivo(esquema))
-    guardar_instantanea(vistas)
-    return {"agregadas": {nombre: len(filas) for nombre, filas in nuevas.items()}}
+
+
+def escribir_cambios(esquema, libro, cambios):
+    """Escribe en el libro las columnas dadas, {pestaña: [{columna_id: ID, columna: valor}]}, en la fila de su ID."""
+    for nombre, filas in cambios.items():
+        pestana = libro[nombre]
+        columnas = encabezados(pestana_del_esquema(esquema, nombre))
+        for cambio in filas:
+            numero = next(celda.row for celda in pestana["A"] if celda.value == cambio[columnas[0]])
+            for columna, valor in cambio.items():
+                escribir(pestana.cell(numero, columnas.index(columna) + 1), valor)
 
 
 def actualizar(esquema, entrada):
@@ -361,16 +387,307 @@ def actualizar(esquema, entrada):
     if errores:
         rechazar(errores)
     vistas = instantanea(esquema, todas)
-    for nombre, filas in cambios.items():
-        pestana = libro[nombre]
-        columnas = encabezados(pestana_del_esquema(esquema, nombre))
-        for cambio in filas:
-            numero = next(celda.row for celda in pestana["A"] if celda.value == cambio[columnas[0]])
-            for columna, valor in cambio.items():
-                escribir(pestana.cell(numero, columnas.index(columna) + 1), valor)
+    escribir_cambios(esquema, libro, cambios)
     guardar(libro, ruta_archivo(esquema))
     guardar_instantanea(vistas)
     return {"actualizadas": {nombre: len(filas) for nombre, filas in cambios.items()}}
+
+
+# --- importar: la salida de buscar.py (07/BUS-REGISTRO) ------------------------
+
+# Las decisiones de una línea «revisar» de una vacante: cada columna que se decide, con su motivo.
+DECIDIBLES = {"region_relacionada": "motivo_region", "estado_vigencia": "motivo"}
+DE_LAS_DECISIONES = ("solicitud_alcance", "recursos_versiones", "no_revisado_pendientes")
+# Las columnas de vacantes que vienen de buscar.py; en una ya registrada se actualizan si cambiaron.
+DE_LA_SALIDA = ("job_id", "titulo", "url_oficial", "ubicacion_literal", "modalidad_literal", "region_relacionada",
+                "fecha_publicacion")
+# Los conteos de un listado, que cambian entre búsquedas comparables (buscar.py, listado() y cada adaptador).
+CUENTAS = re.compile(r"\d+ de \d+ grupos|\d+ únicos(?: de \w+|, sin total publicado)?")
+
+
+def generador_de_ids(columna, filas):
+    """Los IDs siguientes al mayor registrado, con el prefijo y las cifras del patrón (11/REG-CONVENCIONES). Los
+    sintéticos, con PRUEBA- delante, no cuentan."""
+    m = re.fullmatch(r"([A-Z]+-)\\d\{(\d+),\}", columna["patron"])
+    prefijo, cifras = m.group(1), int(m.group(2))
+    numeros = [int(f[columna["nombre"]][len(prefijo):]) for f in filas
+               if re.fullmatch(re.escape(prefijo) + r"\d+", f[columna["nombre"]])]
+    n = max(numeros, default=0)
+    while True:
+        n += 1
+        yield f"{prefijo}{n:0{cifras}d}"
+
+
+def con_job_id(job_id):
+    return job_id != "" and job_id.casefold() != "no publicado"
+
+
+def identidades(vacante):
+    """Las claves de una vacante (11/REG-IDENTIDAD): empresa + Job ID y empresa + URL oficial. La primera es su
+    identidad: la de Job ID si lo tiene; si no, la provisional, por la URL."""
+    claves = []
+    if con_job_id(vacante["job_id"]):
+        claves.append((vacante["empresa_id"], "job_id", vacante["job_id"]))
+    if vacante["url_oficial"]:
+        claves.append((vacante["empresa_id"], "url_oficial", vacante["url_oficial"]))
+    return claves
+
+
+CAMPOS_DE_EMPRESA = ("acceso", "consultas", "total_reportado", "unicos", "completa", "vacantes",
+                     "remotas_fuera_de_region", "remotas_revision", "revisar")
+CAMPOS_DE_VACANTE = ("job_id", "titulo", "url_oficial", "ubicacion_literal", "modalidad_literal", "region_relacionada",
+                     "ubicaciones_por_revisar", "fecha_publicacion", "estado_vigencia", "motivo", "url_fuente",
+                     "departamento", "descripcion")
+
+
+def forma_de_salida(salida):
+    """Los errores de forma de la salida de buscar.py: cada empresa con su EMP-ID y su error o sus listados, y cada
+    vacante con los campos de vacantes y observaciones (07/BUS-ACCESO-CODE, «Salida»)."""
+    if not (isinstance(salida, dict) and isinstance(salida.get("script"), str)
+            and isinstance(salida.get("fecha_hora"), str) and isinstance(salida.get("empresas"), list)):
+        return ["La salida no tiene la forma de la de buscar.py: un objeto con script, fecha_hora y empresas."]
+    errores = []
+    for n, r in enumerate(salida["empresas"], 1):
+        if not (isinstance(r, dict) and isinstance(r.get("empresa_id"), str)):
+            errores.append(f"salida, empresa {n}: no es un objeto con empresa_id.")
+        elif "error" not in r:
+            faltan = [c for c in CAMPOS_DE_EMPRESA if c not in r]
+            faltan += sorted({c for lista in ("vacantes", "remotas_fuera_de_region")
+                              for v in r.get(lista) or [] for c in CAMPOS_DE_VACANTE if not isinstance(v, dict)
+                              or c not in v})
+            if faltan:
+                errores.append(f"salida, {r['empresa_id']}: le falta {', '.join(dict.fromkeys(faltan))}; ¿es la salida "
+                               "de herramientas/buscar.py sin editar?")
+    return errores
+
+
+def nombre_en_buscar(v):
+    """Cómo nombra buscar.py una vacante en sus líneas «revisar»: por su Job ID o, sin él, por su URL."""
+    return v["job_id"] if v["job_id"] not in (None, "No publicado") else v["url_oficial"] or v["url_fuente"]
+
+
+def listadas(r):
+    """{nombre en buscar.py: (vacante, sus líneas «revisar»)} de una empresa de la salida: las de la región y las
+    remotas de fuera. Las publicaciones de una misma requisición (mismo nombre) son una sola vacante, con todas sus
+    ubicaciones y las líneas «revisar» de todas."""
+    vacantes = {}
+    for v in r["vacantes"] + r["remotas_fuera_de_region"]:
+        nombre = nombre_en_buscar(v)
+        v = {c: ("" if x is None else x) for c, x in v.items()}
+        if nombre not in vacantes:
+            vacantes[nombre] = (v, por_revisar(v))
+            continue
+        primera, lineas = vacantes[nombre]
+        ubicaciones = primera["ubicacion_literal"].split(" | ") + v["ubicacion_literal"].split(" | ")
+        primera["ubicacion_literal"] = " | ".join(dict.fromkeys(u for u in ubicaciones if u))
+        for columna, linea in por_revisar(v).items():
+            lineas[columna] = f"{lineas[columna]} · {linea}" if columna in lineas else linea
+    return vacantes
+
+
+def por_revisar(v):
+    """Las líneas «revisar» de una vacante que piden decisión, {columna decidible: línea}, como las da buscar.py."""
+    lineas = {}
+    if v["ubicaciones_por_revisar"] or v["region_relacionada"] == "Indeterminada" or v.get("revisar"):
+        notas = [v["ubicacion_literal"]] + list(v.get("revisar") or [])
+        lineas["region_relacionada"] = "revisar ubicación: " + "; ".join(n for n in notas if n)
+    if v["estado_vigencia"] != "Confirmada abierta" or "detalle no consultado" in v["motivo"]:
+        lineas["estado_vigencia"] = f"revisar vigencia: {v['motivo']}"
+    return lineas
+
+
+def fuente(r):
+    """El elemento de una empresa en fuentes_consultas_filtros: acceso, listados con sus conteos y remotas."""
+    partes = [r["acceso"], *r["consultas"]] + ([f"remotas: {r['remotas_revision']}"] if r["remotas_revision"] else [])
+    return f"{r['empresa_id']}: " + "; ".join(partes).replace(" | ", " / ")
+
+
+def cobertura(r, vacantes):
+    """El elemento de una empresa en cobertura_limitaciones (07/BUS-REGISTRO)."""
+    if r["completa"] is None:
+        texto = (f"{r['unicos']} únicos, sin total publicado; "
+                 + (r.get("verificacion_cobertura") or "sin comprobación de la ficha"))
+    else:
+        texto = f"{r['unicos']} únicos de {r['total_reportado']}, {'completa' if r['completa'] else 'incompleta'}"
+    texto += f"; detalle leído en {sum(bool(v['descripcion']) for v in vacantes)} de {len(vacantes)}"
+    return f"{r['empresa_id']}: {texto}" + "".join(f"; revisar: {nota}" for nota in r["revisar"])
+
+
+def comparacion(registradas, r, actuales, cambios):
+    """El elemento de una empresa en comparacion_anterior, contra la última búsqueda comparable (07/BUS-COBERTURA):
+    la que listó la misma empresa con el mismo acceso y las mismas consultas, salvo los conteos. None si no hay."""
+    firma = CUENTAS.sub("#", fuente(r))
+    comparables = [b for b in registradas["busquedas"]
+                   if any(CUENTAS.sub("#", e) == firma for e in b["fuentes_consultas_filtros"].split(" | "))]
+    if not comparables:
+        return None
+    anterior = max(comparables, key=lambda b: (b["fecha_hora"], b["busqueda_id"]))["busqueda_id"]
+    de_la_empresa = {v["vacante_id"] for v in registradas["vacantes"] if v["empresa_id"] == r["empresa_id"]}
+    # Una vacante que esa búsqueda vio cerrada (07/BUS-PASOS, paso 7) ya no se espera en el listado.
+    previas = list(dict.fromkeys(o["vacante_id"] for o in registradas["observaciones"]
+                                 if o["busqueda_id"] == anterior and o["vacante_id"] in de_la_empresa
+                                 and o["estado_vigencia"] != "Cerrada"))
+
+    def lista(ids):
+        return ", ".join(ids) or "ninguno"
+
+    texto = (f"{r['empresa_id']}, contra {anterior}: nuevos {lista([v for v in actuales if v not in previas])}; "
+             f"ya conocidos {lista([v for v in actuales if v in previas])}; no observados esta vez, sin declararlos "
+             f"cerrados: {lista([v for v in previas if v not in actuales])}")
+    if cambios:
+        texto += "; cambios: " + ", ".join(f"{v} ({', '.join(c)})" for v, c in cambios.items())
+    return texto
+
+
+def decisiones_de(decididas, nombre, lineas, etiqueta, errores):
+    """{columna: (valor, motivo)} de lo que se decidió para una vacante, comprobado contra sus líneas «revisar»."""
+    d = decididas.get(nombre, {})
+    if not isinstance(d, dict):
+        errores.append(f"decisiones, {etiqueta}: debe ser un objeto {{columna: texto}}.")
+        return {}
+    for c, v in d.items():
+        if c not in DECIDIBLES and c not in DECIDIBLES.values():
+            errores.append(f"decisiones, {etiqueta}: {c!r} no se decide; opciones: "
+                           + ", ".join(f"{c} con {m}" for c, m in DECIDIBLES.items()) + ".")
+        elif not isinstance(v, str):
+            errores.append(f"decisiones, {etiqueta}: {c} debe ser texto, entre comillas; dice {v!r}.")
+    elegidas = {}
+    for columna, motivo in DECIDIBLES.items():
+        valor, porque = d.get(columna), d.get(motivo)
+        if columna in lineas and not (valor or porque):
+            errores.append(f"{etiqueta}: falta la decisión de la línea «{lineas[columna]}»: {columna} y {motivo}.")
+        elif bool(valor) != bool(porque):
+            errores.append(f"decisiones, {etiqueta}: {columna} va con su {motivo}; falta "
+                           f"{motivo if valor else columna}.")
+        if isinstance(valor, str) and valor:
+            elegidas[columna] = (valor, porque if isinstance(porque, str) else "")
+    return elegidas
+
+
+def importar(esquema, salida, decisiones):
+    """Registra una búsqueda desde la salida de buscar.py y las decisiones del agente (07/BUS-REGISTRO): su fila de
+    busquedas, las vacantes nuevas, una observación por vacante listada y los cambios a las ya registradas. Con un
+    solo error no escribe nada."""
+    forma = forma_de_salida(salida)
+    if forma:
+        rechazar(forma)
+    if not isinstance(decisiones, dict):
+        rechazar(["Las decisiones deben ser un objeto JSON con " + ", ".join(DE_LAS_DECISIONES) + " y revisar."])
+    errores = [f"decisiones: {c!r} no es un campo de las decisiones; opciones: {', '.join(DE_LAS_DECISIONES)}, revisar."
+               for c in decisiones if c not in (*DE_LAS_DECISIONES, "revisar")]
+    errores += [f"decisiones: {c} debe ser texto, entre comillas; dice {decisiones[c]!r}."
+                for c in DE_LAS_DECISIONES if not isinstance(decisiones.get(c, ""), str)]
+    revisar = decisiones.get("revisar", {})
+    if not (isinstance(revisar, dict) and all(isinstance(d, dict) for d in revisar.values())):
+        errores.append("decisiones: revisar debe ser {EMP-ID: {nombre de la vacante en buscar.py: decisión}}.")
+        revisar = {}
+    pendientes = decisiones.get("no_revisado_pendientes")
+    pendientes = pendientes if isinstance(pendientes, str) else ""
+
+    libro, registradas = abrir(esquema)
+    todas = {nombre: [dict(f) for f in filas] for nombre, filas in registradas.items()}
+    pestanas = {p["nombre"]: p for p in esquema["pestanas"]}
+    columnas = {nombre: encabezados(p) for nombre, p in pestanas.items()}
+    ids = {nombre: generador_de_ids(clave(pestanas[nombre]), todas[nombre])
+           for nombre in ("busquedas", "vacantes", "observaciones")}
+    busqueda_id, fecha = next(ids["busquedas"]), salida["fecha_hora"][:10]
+    por_id = {v["vacante_id"]: v for v in todas["vacantes"]}
+    por_identidad = {}
+    for v in todas["vacantes"]:
+        for k in identidades(v):
+            por_identidad.setdefault(k, v)
+
+    def canonica(v):
+        """La fila canónica de una registrada: la que la absorbió, si fue un duplicado (11/REG-IDENTIDAD)."""
+        vistas = set()
+        while v and v["duplicado_de"] and v["vacante_id"] not in vistas:
+            vistas.add(v["vacante_id"])
+            v = por_id.get(v["duplicado_de"], v)
+        return v
+
+    fuentes, coberturas, comparaciones, compacta = [salida["script"]], [], [], []
+    nuevas = {nombre: [] for nombre in ("busquedas", "vacantes", "observaciones")}
+    cambios, revisar_filas = {}, []
+    for r in salida["empresas"]:
+        eid = r["empresa_id"]
+        if "error" in r:
+            fuentes.append(f"{eid}: [FALLO] {r['error']}")
+            coberturas.append(f"{eid}: [FALLO] {r['error']}")
+            if not re.search(rf"(?<![\w-]){re.escape(eid)}(?![\w-])", pendientes):
+                errores.append(f"{eid}: salió como [FALLO] ({r['error']}) y no está declarada en "
+                               "no_revisado_pendientes de las decisiones.")
+            continue
+        vacantes = listadas(r)
+        decididas = revisar.get(eid, {})
+        fuentes.append(fuente(r))
+        coberturas.append(cobertura(r, [v for v, _ in vacantes.values()]))
+        actuales, cambiadas = [], {}
+        for nombre, (v, lineas) in vacantes.items():
+            etiqueta = f"{eid}, {nombre}"
+            elegidas = decisiones_de(decididas, nombre, lineas, etiqueta, errores)
+            fila = {c: v[c] for c in DE_LA_SALIDA} | {"empresa_id": eid}
+            motivo = v["motivo"]
+            estado = v["estado_vigencia"]
+            if "estado_vigencia" in elegidas:
+                estado, motivo = elegidas["estado_vigencia"][0], elegidas["estado_vigencia"][1] or motivo
+            if "region_relacionada" in elegidas:
+                fila["region_relacionada"], porque = elegidas["region_relacionada"]
+                motivo += f"; región {fila['region_relacionada']}: {porque}"
+            observacion_id = next(ids["observaciones"])
+            identidad = identidades(fila)[:1]
+            registrada = canonica(por_identidad[identidad[0]]) if identidad and identidad[0] in por_identidad else None
+            if registrada is None:
+                vacante_id = next(ids["vacantes"])
+                nuevas["vacantes"].append({c: "" for c in columnas["vacantes"]} | fila | {
+                    "vacante_id": vacante_id, "primera_deteccion": fecha, "ultima_observacion_id": observacion_id})
+                revisar_filas.append(("vacantes", nuevas["vacantes"][-1], etiqueta))
+            else:
+                vacante_id = registrada["vacante_id"]
+                distintas = {c: fila[c] for c in DE_LA_SALIDA if fila[c] and fila[c] != registrada[c]
+                             and (c != "job_id" or not con_job_id(registrada["job_id"]))}
+                motivo += "".join(f"; {c}: «{registrada[c]}» → «{x}»" for c, x in distintas.items() if registrada[c])
+                if distintas:
+                    cambiadas[vacante_id] = list(distintas)
+                cambio = {"vacante_id": vacante_id, **distintas, "ultima_observacion_id": observacion_id}
+                registrada.update(cambio)
+                cambios.setdefault(vacante_id, {}).update(cambio)
+                revisar_filas.append(("vacantes", registrada, etiqueta))
+            nuevas["observaciones"].append({
+                "observacion_id": observacion_id, "vacante_id": vacante_id, "busqueda_id": busqueda_id,
+                "fecha_verificacion": fecha, "estado_vigencia": estado, "motivo": motivo,
+                "url_fuente": v["url_fuente"], "tipo_fuente": "Oficial"})
+            revisar_filas.append(("observaciones", nuevas["observaciones"][-1], etiqueta))
+            actuales.append(vacante_id)
+            compacta.append(f"{vacante_id} · {fila['titulo']} · {v['departamento'] or '—'}")
+        comparaciones.append(comparacion(registradas, r, actuales, cambiadas) or f"{eid}: Sin búsqueda comparable")
+        errores += [f"decisiones, {eid}, {nombre}: no es una vacante de {eid} en la salida; se nombra como en las "
+                    "líneas «revisar» de buscar.py, por su Job ID o su URL." for nombre in decididas
+                    if nombre not in vacantes]
+    con_resultados = {r["empresa_id"] for r in salida["empresas"] if "error" not in r}
+    errores += [f"decisiones, {eid}: no es una empresa con resultados en la salida." for eid in revisar
+                if eid not in con_resultados]
+    busqueda = {c: decisiones.get(c, "") if isinstance(decisiones.get(c, ""), str) else "" for c in DE_LAS_DECISIONES}
+    busqueda.update({
+        "busqueda_id": busqueda_id, "fecha_hora": salida["fecha_hora"],
+        "fuentes_consultas_filtros": " | ".join(fuentes), "cobertura_limitaciones": " | ".join(coberturas),
+        "comparacion_anterior": " | ".join(comparaciones) if any(c for c in comparaciones
+                                                                 if not c.endswith(": Sin búsqueda comparable"))
+                                else "Sin búsqueda comparable"})
+    nuevas["busquedas"].append({c: busqueda[c] for c in columnas["busquedas"]})
+    errores += [f"Esta salida de buscar.py ya se importó como {b['busqueda_id']}: misma fecha_hora y mismas fuentes."
+                for b in registradas["busquedas"] if (b["fecha_hora"], b["fuentes_consultas_filtros"])
+                == (busqueda["fecha_hora"], busqueda["fuentes_consultas_filtros"])]
+    for nombre, filas in nuevas.items():
+        todas[nombre] += filas
+    errores += comprobar(esquema, todas, [("busquedas", nuevas["busquedas"][0], busqueda_id)] + revisar_filas)
+    if errores:
+        rechazar(errores)
+    vistas = instantanea(esquema, todas)
+    anexar(libro, nuevas)
+    escribir_cambios(esquema, libro, {"vacantes": list(cambios.values())})
+    guardar(libro, ruta_archivo(esquema))
+    guardar_instantanea(vistas)
+    return {"busqueda_id": busqueda_id, "vacantes": compacta}
 
 
 def leer_zona_horaria():
@@ -654,6 +971,10 @@ def main():
     o.add_argument("pestana", metavar="PESTAÑA")
     o.add_argument("--id", nargs="+", default=[], help="solo las filas con alguno de estos IDs")
     o.add_argument("--columna", help="columna donde se buscan los IDs (por defecto, la primera)")
+    o = ordenes.add_parser("importar", help="registra una búsqueda desde la salida de buscar.py y las decisiones")
+    o.add_argument("salida", metavar="SALIDA.json", help="la salida JSON de herramientas/buscar.py")
+    o.add_argument("decisiones", metavar="DECISIONES.json",
+                   help="alcance, versiones, pendientes y la decisión de cada línea «revisar»")
     ordenes.add_parser("instantanea", help="regenera la instantánea completa que lee el canal Web")
     a = ap.parse_args()
     esquema = leer_esquema()
@@ -663,6 +984,8 @@ def main():
         res = agregar(esquema, leer_entrada(a.filas))
     elif a.orden == "actualizar":
         res = actualizar(esquema, leer_entrada(a.filas))
+    elif a.orden == "importar":
+        res = importar(esquema, leer_entrada(a.salida), leer_entrada(a.decisiones))
     elif a.orden == "informe":
         res = informe(esquema, a.busqueda_id)
     elif a.orden == "instantanea":

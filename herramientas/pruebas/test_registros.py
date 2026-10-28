@@ -4,10 +4,13 @@ Uso, con el Python de un entorno virtual que tiene openpyxl (CONTRIBUTING, «Pru
     .venv/bin/python -I -B -m unittest discover -s herramientas/pruebas
 
 Sin openpyxl, se saltan. Cada prueba arma una copia ficticia con el script, el 08 y el 11 de la plantilla,
-un 04 con la zona horaria y un 06 con empresas ficticias. Los datos son sintéticos.
+un 04 con la zona horaria y un 06 con empresas ficticias. Los datos son sintéticos. La entrada de importar
+sale de correr buscar.py en la copia contra el portal falso de Workday de sus pruebas.
 """
+import contextlib
 import datetime as dt
 import importlib.util
+import io
 import json
 import pathlib
 import re
@@ -16,6 +19,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
+
+from test_buscar import WorkdayFalso, ficha, grupo, preferencias
+from test_buscar import modulo_04 as modulo_04_con_region, modulo_06 as modulo_06_con_fichas
 
 RAIZ = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = RAIZ / "herramientas" / "registros.py"
@@ -597,6 +604,223 @@ class Instantanea(CopiaFicticia):
         r = subprocess.run(["markdownlint-cli2", "--no-globs", "instantanea/informes.md", "instantanea/vacantes.md"],
                            cwd=self.dir, capture_output=True, text=True, timeout=60)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+
+class WorkdaySinDetalle(WorkdayFalso):
+    """El portal falso de Workday, con error en el detalle de los anuncios de sin_detalle."""
+
+    def __init__(self, anuncios, sin_detalle=()):
+        super().__init__(anuncios)
+        self.sin_detalle = set(sin_detalle)
+
+    def __call__(self, url, *argumentos, **opciones):
+        if url.startswith(self.API + "/job/") and url.rsplit("_", 1)[-1] in self.sin_detalle:
+            raise self.script.Fallo(f"HTTP 500 en {url}", 500)
+        return super().__call__(url, *argumentos, **opciones)
+
+
+def anuncio(job_id, ubicacion, **otros):
+    pais = "País C" if "País C" in ubicacion else "País A"
+    return {"id": job_id, "pais": pais, "ubicaciones": [ubicacion], **otros}
+
+
+PRIMERA = [anuncio("R-1", "Ciudad A1, País A"),
+           anuncio("R-2", "País A"),  # solo el país: «revisar ubicación»
+           anuncio("R-4", "Ciudad A1, País A"),  # su detalle falla: «revisar vigencia»
+           anuncio("R-3", "Ciudad C1, País C", modalidad="Remote")]  # remota fuera de la región
+DETALLE_R4 = WorkdayFalso.API + "/job/Lugar/Puesto_R-4"
+
+
+class Importar(CopiaFicticia):
+    """importar registra la salida de buscar.py con un archivo de decisiones (07/BUS-REGISTRO)."""
+
+    def setUp(self):
+        super().setUp()
+        shutil.copy(RAIZ / "herramientas" / "buscar.py", self.dir / "herramientas")
+        (self.dir / "04_PREFERENCIAS_LABORALES.md").write_text(
+            modulo_04_con_region(preferencias([grupo("XA", ["Estado A"], ["Ciudad A1"])], alcance="cualquiera")),
+            encoding="utf-8")
+        fichas = {"EMP-ACME": ficha("EMP-ACME", {"plataforma": "workday", "portal": WorkdayFalso.PORTAL}),
+                  "EMP-ROTA": ficha("EMP-ROTA", {"plataforma": "inexistente", "portal": "https://x"})}
+        (self.dir / "06_EMPRESAS_OBJETIVO.md").write_text(modulo_06_con_fichas(fichas), encoding="utf-8")
+        self.sesion = self.dir / "sesion"
+        self.sesion.mkdir()
+        self.ok("crear")
+
+    def buscar(self, anuncios, *empresas, sin_detalle=(), codigo_esperado=0):
+        """Corre buscar.py de la copia con el portal falso y devuelve la ruta de su salida JSON."""
+        portal = WorkdaySinDetalle(anuncios, sin_detalle)
+        especificacion = importlib.util.spec_from_file_location("buscar_copia", self.dir / "herramientas" / "buscar.py")
+        script = importlib.util.module_from_spec(especificacion)
+        especificacion.loader.exec_module(script)
+        script.pedir, portal.script = portal, script
+        salida = self.sesion / f"busqueda_{len(list(self.sesion.iterdir()))}.json"
+        errores, codigo = io.StringIO(), 0
+        with mock.patch.object(sys, "argv", ["buscar.py", *(empresas or ["EMP-ACME"]), "--salida", str(salida)]), \
+                contextlib.redirect_stderr(errores):
+            try:
+                script.main()
+            except SystemExit as e:
+                codigo = e.code
+        self.assertEqual(codigo, codigo_esperado, errores.getvalue())
+        return salida
+
+    def importar(self, salida, decisiones):
+        ruta = self.sesion / "decisiones.json"
+        ruta.write_text(json.dumps(decisiones, ensure_ascii=False), encoding="utf-8")
+        return self.correr("importar", str(salida), str(ruta))
+
+    def decisiones(self, revisar=None, pendientes="Ninguno"):
+        return {"solicitud_alcance": "Todas las empresas de 06 con la región de 04",
+                "recursos_versiones": "07 v1.4 | 06/EMP-ACME v0.1 | 04 v1.0", "no_revisado_pendientes": pendientes,
+                "revisar": revisar or {}}
+
+    def primeras_decisiones(self):
+        return self.decisiones({"EMP-ACME": {
+            "R-2": {"region_relacionada": "Dentro", "motivo_region": "el portal solo publica Ciudad A1 en País A"},
+            DETALLE_R4: {"estado_vigencia": "Confirmada abierta", "motivo": "En listado oficial; detalle no consultado"}}})
+
+    def assertRechazaSinEscribirNada(self, r, *textos):
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        for t in textos:
+            self.assertIn(t, r.stderr)
+        self.assertIn("No se escribió ninguna fila.", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertEqual(r.stdout, "")
+        for pestana in ("busquedas", "vacantes", "observaciones"):
+            self.assertEqual(self.leer(pestana), [])
+        self.assertFalse((self.dir / "instantanea").exists())
+
+    def test_una_primera_busqueda_crea_su_fila_sus_vacantes_y_una_observacion_por_cada_una(self):
+        salida = self.buscar(PRIMERA, sin_detalle=["R-4"])
+        de_buscar = json.loads(salida.read_text(encoding="utf-8"))
+        r = self.importar(salida, self.primeras_decisiones())
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["busqueda_id"], "BUS-0001")
+        fecha = de_buscar["fecha_hora"][:10]
+
+        [busqueda] = self.leer("busquedas")
+        self.assertEqual(busqueda["fecha_hora"], de_buscar["fecha_hora"])
+        self.assertEqual(busqueda["solicitud_alcance"], "Todas las empresas de 06 con la región de 04")
+        self.assertEqual(busqueda["recursos_versiones"], "07 v1.4 | 06/EMP-ACME v0.1 | 04 v1.0")
+        self.assertTrue(busqueda["fuentes_consultas_filtros"].startswith(
+            "herramientas/buscar.py v1.0 | EMP-ACME: API de Workday"), busqueda["fuentes_consultas_filtros"])
+        self.assertIn("Location_Country = País A (3 únicos de 3)", busqueda["fuentes_consultas_filtros"])
+        self.assertIn("remoteType = Remote", busqueda["fuentes_consultas_filtros"])
+        self.assertEqual(busqueda["cobertura_limitaciones"], "EMP-ACME: 4 únicos de 4, completa; detalle leído en 3 de 4")
+        self.assertEqual(busqueda["no_revisado_pendientes"], "Ninguno")
+        self.assertEqual(busqueda["comparacion_anterior"], "Sin búsqueda comparable")
+
+        vacantes = self.leer("vacantes")
+        self.assertEqual([(v["vacante_id"], v["job_id"], v["region_relacionada"], v["ultima_observacion_id"])
+                          for v in vacantes],
+                         [("VAC-0001", "R-1", "Dentro", "OBS-0001"), ("VAC-0002", "R-2", "Dentro", "OBS-0002"),
+                          ("VAC-0003", "", "Dentro", "OBS-0003"), ("VAC-0004", "R-3", "Fuera", "OBS-0004")])
+        self.assertEqual({v["primera_deteccion"] for v in vacantes}, {fecha})
+        self.assertEqual(vacantes[0] | {"vacante_id": ""}, {
+            "vacante_id": "", "empresa_id": "EMP-ACME", "job_id": "R-1", "titulo": "Puesto R-1",
+            "url_oficial": WorkdayFalso.PORTAL + "/job/Lugar/Puesto_R-1", "ubicacion_literal": "Ciudad A1, País A",
+            "modalidad_literal": "", "region_relacionada": "Dentro", "fecha_publicacion": "2026-10-01",
+            "primera_deteccion": fecha, "ultima_observacion_id": "OBS-0001", "duplicado_de": ""})
+
+        observaciones = self.leer("observaciones")
+        self.assertEqual([(o["observacion_id"], o["vacante_id"], o["busqueda_id"]) for o in observaciones],
+                         [(f"OBS-000{n}", f"VAC-000{n}", "BUS-0001") for n in range(1, 5)])
+        self.assertEqual({(o["fecha_verificacion"], o["tipo_fuente"], o["estado_vigencia"]) for o in observaciones},
+                         {(fecha, "Oficial", "Confirmada abierta")})
+        self.assertEqual(observaciones[0]["motivo"], "Detalle oficial: canApply: true")
+        self.assertEqual(observaciones[0]["url_fuente"], WorkdayFalso.API + "/job/Lugar/Puesto_R-1")
+        # La decisión de región queda con su motivo en la observación; la de vigencia reemplaza la sugerida.
+        self.assertEqual(observaciones[1]["motivo"], "Detalle oficial: canApply: true; región Dentro: el portal solo "
+                                                     "publica Ciudad A1 en País A")
+        self.assertEqual(observaciones[2]["motivo"], "En listado oficial; detalle no consultado")
+        self.assertIn("## BUS-0001", (self.dir / "instantanea" / "informes.md").read_text(encoding="utf-8"))
+
+    def test_devuelve_solo_la_lista_compacta_de_las_vacantes_de_la_busqueda(self):
+        r = self.importar(self.buscar(PRIMERA, sin_detalle=["R-4"]), self.primeras_decisiones())
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout), {"busqueda_id": "BUS-0001", "vacantes": [
+            "VAC-0001 · Puesto R-1 · —", "VAC-0002 · Puesto R-2 · —", "VAC-0003 · Puesto R-4 · —",
+            "VAC-0004 · Puesto R-3 · —"]})
+        self.assertNotIn("Descripción ficticia", r.stdout)
+
+    def test_una_segunda_busqueda_actualiza_las_conocidas_y_compara_con_la_anterior(self):
+        self.assertEqual(self.importar(self.buscar(PRIMERA, sin_detalle=["R-4"]), self.primeras_decisiones()).returncode, 0)
+        antes = {v["vacante_id"]: v for v in self.leer("vacantes")}
+        segunda = [anuncio("R-1", "Ciudad A1, Estado A, País A"), anuncio("R-5", "Ciudad A1, País A"),
+                   anuncio("R-3", "Ciudad C1, País C", modalidad="Remote")]
+        r = self.importar(self.buscar(segunda), self.decisiones())
+        self.assertEqual(r.returncode, 0, r.stderr)
+        res = json.loads(r.stdout)
+        self.assertEqual(res, {"busqueda_id": "BUS-0002", "vacantes": [
+            "VAC-0001 · Puesto R-1 · —", "VAC-0005 · Puesto R-5 · —", "VAC-0004 · Puesto R-3 · —"]})
+
+        busqueda = self.leer("busquedas", "--id", "BUS-0002")[0]
+        self.assertEqual(busqueda["comparacion_anterior"],
+                         "EMP-ACME, contra BUS-0001: nuevos VAC-0005; ya conocidos VAC-0001, VAC-0004; no observados "
+                         "esta vez, sin declararlos cerrados: VAC-0002, VAC-0003; cambios: VAC-0001 (ubicacion_literal)")
+        vacantes = {v["vacante_id"]: v for v in self.leer("vacantes")}
+        self.assertEqual(len(vacantes), 5)
+        # La conocida conserva su primera detección y toma lo último observado.
+        self.assertEqual(vacantes["VAC-0001"], antes["VAC-0001"] | {
+            "ubicacion_literal": "Ciudad A1, Estado A, País A", "ultima_observacion_id": "OBS-0005"})
+        self.assertEqual(vacantes["VAC-0004"]["ultima_observacion_id"], "OBS-0007")
+        # Las no observadas no cambian ni reciben observación: no se declaran cerradas.
+        for vid in ("VAC-0002", "VAC-0003"):
+            self.assertEqual(vacantes[vid], antes[vid])
+        self.assertEqual(vacantes["VAC-0005"]["primera_deteccion"], busqueda["fecha_hora"][:10])
+        observaciones = self.leer("observaciones", "--columna", "busqueda_id", "--id", "BUS-0002")
+        self.assertEqual([(o["observacion_id"], o["vacante_id"]) for o in observaciones],
+                         [("OBS-0005", "VAC-0001"), ("OBS-0006", "VAC-0005"), ("OBS-0007", "VAC-0004")])
+        self.assertEqual(observaciones[0]["motivo"], "Detalle oficial: canApply: true; ubicacion_literal: «Ciudad A1, "
+                                                     "País A» → «Ciudad A1, Estado A, País A»")
+
+    def test_la_misma_salida_no_se_importa_dos_veces(self):
+        salida = self.buscar(PRIMERA, sin_detalle=["R-4"])
+        self.assertEqual(self.importar(salida, self.primeras_decisiones()).returncode, 0)
+        antes = self.archivo.read_bytes()
+        r = self.importar(salida, self.primeras_decisiones())
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("BUS-0001", r.stderr)
+        self.assertEqual(self.archivo.read_bytes(), antes)
+
+    def test_rechaza_sin_escribir_si_queda_una_linea_revisar_o_un_fallo_sin_declarar(self):
+        salida = self.buscar(PRIMERA, "EMP-ACME", "EMP-ROTA", sin_detalle=["R-4"], codigo_esperado=1)
+        # Sin la decisión de región de R-2 y sin declarar el [FALLO] de EMP-ROTA.
+        decisiones = self.primeras_decisiones()
+        del decisiones["revisar"]["EMP-ACME"]["R-2"]
+        self.assertRechazaSinEscribirNada(self.importar(salida, decisiones), "EMP-ACME, R-2", "revisar ubicación",
+                                          "region_relacionada", "EMP-ROTA", "[FALLO]", "no_revisado_pendientes")
+        # Un EMP-ID que solo aparece dentro de otro no declara el [FALLO].
+        decisiones = self.primeras_decisiones()
+        decisiones["no_revisado_pendientes"] = "EMP-ROTAS: sin buscar"
+        self.assertRechazaSinEscribirNada(self.importar(salida, decisiones), "EMP-ROTA: salió como [FALLO]")
+        # Sin la de vigencia de R-4.
+        decisiones = self.primeras_decisiones()
+        del decisiones["revisar"]["EMP-ACME"][DETALLE_R4]
+        decisiones["no_revisado_pendientes"] = "EMP-ROTA: [FALLO], sin buscar"
+        self.assertRechazaSinEscribirNada(self.importar(salida, decisiones), DETALLE_R4, "revisar vigencia",
+                                          "estado_vigencia")
+        # Con todo atendido, el [FALLO] queda en las fuentes y la cobertura.
+        decisiones = self.primeras_decisiones()
+        decisiones["no_revisado_pendientes"] = "EMP-ROTA: [FALLO], sin buscar"
+        r = self.importar(salida, decisiones)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        busqueda = self.leer("busquedas")[0]
+        for columna in ("fuentes_consultas_filtros", "cobertura_limitaciones"):
+            self.assertIn("EMP-ROTA: [FALLO] la plataforma 'inexistente' no tiene adaptador", busqueda[columna])
+
+    def test_una_decision_invalida_rechaza_todo_y_dice_todos_los_errores(self):
+        salida = self.buscar(PRIMERA, sin_detalle=["R-4"])
+        decisiones = self.primeras_decisiones()
+        del decisiones["recursos_versiones"]
+        decisiones["revisar"]["EMP-ACME"]["R-2"]["region_relacionada"] = "Cerca"
+        decisiones["revisar"]["EMP-ACME"][DETALLE_R4] = {"estado_vigencia": "Abierta"}
+        decisiones["revisar"]["EMP-ACME"]["R-99"] = {"region_relacionada": "Dentro", "motivo_region": "x"}
+        decisiones["revisar"]["EMP-OTRA"] = {}
+        self.assertRechazaSinEscribirNada(
+            self.importar(salida, decisiones), "recursos_versiones", "«Cerca»", "«Abierta»", "motivo", "R-99",
+            "EMP-OTRA")
 
 
 if __name__ == "__main__":
