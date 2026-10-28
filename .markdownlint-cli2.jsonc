@@ -11,6 +11,6 @@
   },
   "globs": ["**/*.md"],
   // Salidas generadas para una vacante, con el formato que exige herramientas/generar_cv.py, y el
-  // entorno virtual del modo local, con los .md de sus bibliotecas.
+  // entorno virtual de la herramienta de registros, con los .md de sus bibliotecas.
   "ignores": ["muestras_cv/**", ".venv/**"]
 }

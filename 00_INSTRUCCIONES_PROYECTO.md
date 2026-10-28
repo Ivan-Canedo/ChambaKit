@@ -1,6 +1,6 @@
 # ChambaKit — Instrucciones del proyecto
 
-Versión 1.2 — 2026-10-27 — Cita 11/REG-LUGAR, antes REG-HOJA.
+Versión 1.3 — 2026-10-27 — Un solo lugar de registros, el archivo de la copia; el canal Web lee su instantánea.
 
 Este texto va en el campo «Instrucciones» del proyecto.
 
@@ -28,12 +28,11 @@ Conversa en español.
 - **06:** empresas, en fichas EMP-ID dentro del mismo archivo.
 - **07:** búsqueda. **08:** evaluación. **09:** generación de CV. **10:** tendencias. **11:** esquema de registros.
 
-**Registros:** «pendiente: `/configurar`, en el paso Registros, escribe aquí la URL de la hoja de Google o `modo local`; mientras tanto, no hay registros»
+**Registros:** el archivo de registros `ChambaKit_Registros.xlsx` de la copia, que solo escribe el canal Code (11/REG-LUGAR). El canal Web no lo lee: lee su instantánea, la carpeta `instantanea/`, que está en el conocimiento del proyecto (11/REG-INSTANTANEA).
 
-- **Dónde:** una URL es la hoja de Google `ChambaKit_Registros`, que necesita Claude y sus conectores de Google; `modo local`, el archivo `ChambaKit_Registros.xlsx` de la copia, que solo se usa desde Code (11/REG-LUGAR). Leer y escribir solo en el lugar que dice esta línea.
 - Pestañas: `vacantes`, `observaciones`, `habilidades_vacante`, `documentos`, `busquedas`, `evaluaciones` e `informes`.
-- **Tabla de una búsqueda:** está en `informes`, calculada desde `vacantes` y `evaluaciones` (en modo local, la calcula la herramienta de 11/REG-LOCAL). Para mostrarla o dar el detalle de una vacante, leer solo las filas necesarias (08/EVAL-INFORME), sin rehacer la búsqueda ni la evaluación.
-- La versión de la hoja que está en el conocimiento del proyecto puede ir atrasada respecto de la hoja real.
+- **Tabla de una búsqueda:** está en `informes`, con las columnas que la herramienta de 11/REG-LOCAL calcula desde `vacantes` y `evaluaciones`; la instantánea trae la de las últimas 10 búsquedas. Para mostrarla o dar el detalle de una vacante, leer solo las filas necesarias (08/EVAL-INFORME), sin rehacer la búsqueda ni la evaluación.
+- La instantánea del conocimiento del proyecto puede ir atrasada respecto del archivo; su encabezado dice la fecha de exportación.
 
 **No disponible:** la carpeta local y los documentos fuente citados en 02, salvo que se adjunten. Si falta una fuente necesaria, pedirla y no simular haberla leído.
 
@@ -64,14 +63,13 @@ Conversa en español.
 
 ## Escritura de registros
 
-- **En la hoja:** con el conector de Google Sheets de Claude en la hoja de la URL indicada. Leer la pestaña antes y después de escribir. Si el conector falla o no está disponible, entregar las filas separadas por tabulador, en el orden de columnas de la pestaña, indicando la pestaña de destino.
-- **En modo local:** solo desde Code, con `herramientas/registros.py`, que comprueba cada fila contra el esquema (11/REG-LOCAL).
+- **Herramienta:** solo desde Code, con `herramientas/registros.py`, que comprueba cada fila contra el esquema y regenera la instantánea (11/REG-LOCAL).
 - **Valores:** no inventar valores para llenar columnas; una celda vacía significa «no registrado». No cambiar encabezados sin acordarlo en 11.
 - **Pruebas:** marcar los datos sintéticos como tales y borrarlos al terminar.
 
 ## Cambios a los módulos
 
-Los módulos solo se editan en el canal Code, en la copia local. El conocimiento del proyecto es una réplica de solo lectura que el titular reemplaza desde ahí. Si en la conversación surge un cambio a un módulo, no entregar el archivo editado. Al cerrar, dejar una **nota para Code** con:
+Los módulos solo se editan en el canal Code, en la copia local. El conocimiento del proyecto es una réplica de solo lectura de la copia. Si en la conversación surge un cambio a un módulo, no entregar el archivo editado. Al cerrar, dejar una **nota para Code** con:
 
 - el módulo y la sección o ID;
 - el cambio propuesto y su motivo;

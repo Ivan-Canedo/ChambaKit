@@ -18,7 +18,7 @@ Valen las reglas de `AGENTS.md`, con estos cambios:
 
 - **Los módulos son plantilla:** estructura, instrucciones breves y marcadores «pendiente», sin datos de ninguna persona ni nombres de empresas, ni siquiera de ejemplo. Sus filas de ESTADO siguen en «Sin llenar».
 - **Remoto público a propósito:** la revisión de «Copia privada» de `AGENTS.md` no aplica a la plantilla.
-- **Sin registros ni búsquedas reales:** la plantilla no tiene hoja de registros ni proyecto web. Los scripts se prueban con datos ficticios, en un clon de prueba (ver «Probar como titular»).
+- **Sin registros ni búsquedas reales:** la plantilla no tiene archivo de registros, instantánea ni proyecto web. Los scripts se prueban con datos ficticios, en un clon de prueba (ver «Probar como titular»).
 - **Versión de la plantilla:** vive en la tabla ESTADO de 01, junto a la URL de la plantilla; es la que anota cada copia nueva y de la que parte `/actualizar` (ADR 0004). Ver «Versión de la plantilla».
 
 ## Agent skills
@@ -60,7 +60,7 @@ Las pruebas automáticas usan `unittest`, sin red, y llaman a cada script por su
 python3 -I -B -m unittest discover -s herramientas/pruebas
 ```
 
-Las que generan un CV se saltan si faltan LibreOffice o poppler; las de la herramienta de registros locales, si falta `openpyxl`, y la que revisa el formato de la instantánea, si falta `markdownlint-cli2`. Para correrlas, usa el Python de un entorno virtual con `openpyxl`, el mismo que crea `/configurar` en modo local:
+Las que generan un CV se saltan si faltan LibreOffice o poppler; las de la herramienta de registros, si falta `openpyxl`, y la que revisa el formato de la instantánea, si falta `markdownlint-cli2`. Para correrlas, usa el Python de un entorno virtual con `openpyxl`, el mismo que crea `/configurar` en el paso 8 (Registros):
 
 ```sh
 python3 -m venv .venv && .venv/bin/python -m pip install openpyxl
@@ -77,7 +77,7 @@ git clone . "$(mktemp -d)/clon"
 
 El clon de prueba solo lleva lo que ya tiene commit. Para probar cambios sin commit, duplica la carpeta y quítale la marca al duplicado con `git -C <clon> config --local --unset chambakit.mantenedor`.
 
-Al abrir el clon de prueba en VS Code con Claude Code, el agente debe ofrecer `/configurar`. Marca como sintéticos los datos de prueba y bórralos al terminar, incluida cualquier hoja de prueba en Drive.
+Al abrir el clon de prueba en VS Code con Claude Code, el agente debe ofrecer `/configurar`. Marca como sintéticos los datos de prueba y bórralos al terminar, incluidos el archivo de registros, la instantánea y cualquier proyecto web o repositorio de prueba.
 
 ## Versión de la plantilla
 

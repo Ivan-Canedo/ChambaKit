@@ -12,7 +12,7 @@ Esta carpeta es la copia de ChambaKit de un titular: los módulos 00–11 con su
 ## Reglas de trabajo
 
 - **Arquitectura:**
-  - Los módulos 00–11 son `.md`. Si el titular usa el canal Web, se suben como conocimiento de un proyecto de claude.ai y 00 se pega en «Instrucciones».
+  - Los módulos 00–11 son `.md`. Si el titular usa el canal Web, llegan al conocimiento de un proyecto de claude.ai, con la instantánea de los registros, y 00 se pega en «Instrucciones».
   - Los registros viven donde indica 00 («Registros»), con el esquema de 11, no en CSV sueltos.
   - Los módulos solo se editan aquí; el proyecto web es una réplica de solo lectura. Las notas para Code que deja un chat web se aplican aquí (00, «Cambios a los módulos»).
 - **Copia privada:** antes de editar el primer módulo de la sesión, haz la revisión del paso 1 de `/configurar` (`.claude/skills/configurar/SKILL.md`), salvo que la skill ya la haya hecho.
@@ -24,6 +24,7 @@ Esta carpeta es la copia de ChambaKit de un titular: los módulos 00–11 con su
 - **Formato Markdown:** tras editar un `.md`, corre `markdownlint-cli2` sobre él y deja cero advertencias (reglas en `.markdownlint-cli2.jsonc`; lo instala `/configurar`). En CV-ES y CV-EN de 03, conserva las negritas y los niveles de `###` al corregir el lint: `herramientas/generar_cv.py` lee ese formato literal (09/CV-HERRAMIENTAS).
 - **Al cerrar una sesión que modificó un módulo:**
   - Actualiza la versión, la fecha y la línea de cambio del módulo, y su fila en la tabla ESTADO de 01. En 06, también la versión y la fecha de comprobación de la ficha.
-  - Si 00 («Registros») tiene la URL de la hoja, recuérdale reemplazar en su proyecto web, si lo tiene, cada módulo editado (00 se vuelve a pegar en «Instrucciones»).
   - Una búsqueda no modifica módulos: sus resultados quedan solo en los registros (07/BUS-REGISTRO).
-- **Al cerrar una sesión que escribió en el archivo del modo local:** ofrece el commit de 11/REG-LOCAL («Historial y respaldo»).
+- **Al cerrar una sesión que cambió módulos o registros:**
+  - Ofrece el commit de los cambios y, si la copia tiene remoto privado, el push, cada uno con su permiso (11/REG-LOCAL, «Historial y respaldo»).
+  - Si el titular tiene proyecto web, recuérdale pulsar «Sync» en él después del push, para que reciba los módulos y la instantánea. Si cambió 00, se vuelve a pegar en «Instrucciones».

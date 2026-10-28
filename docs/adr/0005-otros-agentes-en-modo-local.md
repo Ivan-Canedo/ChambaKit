@@ -18,3 +18,5 @@ Se limita al modo local porque la hoja de registros depende de los conectores de
 - Una prueba automática comprueba que cada skill tenga su puntero con el mismo `name` y `description`.
 - `/configurar` decide en cada uso si el agente es Claude Code; no guarda qué agente usa el titular, que puede cambiarlo.
 - El trabajo del mantenedor sigue dependiendo de Claude Code.
+
+**Reemplazado en parte por el ADR 0006:** al retirarse la hoja, cualquier agente con terminal trabaja la copia completa, sin limitarse al modo local, y la columna `canal` sale de `busquedas`, así que ya no vale la consecuencia sobre su lista cerrada. Las demás decisiones siguen vigentes.

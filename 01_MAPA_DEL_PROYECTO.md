@@ -1,6 +1,6 @@
 # 01 — Mapa y estado del proyecto
 
-**Versión:** 1.4 — 2026-10-27 — 11 describe un solo lugar de registros, el archivo.
+**Versión:** 1.5 — 2026-10-27 — El inventario describe un solo lugar de registros, el archivo de la copia.
 
 ## ESTADO — Punto de continuidad
 
@@ -10,7 +10,7 @@
 
 | Módulo | Versión | Estado | Siguiente paso sugerido |
 | --- | --- | --- | --- |
-| 00 Instrucciones | 1.2 | Sin llenar | `/configurar`, paso 8 (Registros): anota dónde viven los registros |
+| 00 Instrucciones | 1.3 | Sin llenar | `/configurar`, paso 8 (Registros): crea el archivo de registros |
 | 02 Perfil maestro | 1.0 | Sin llenar | `/configurar`, paso 3 (Perfil maestro): extrae la trayectoria del CV actual y entrevista lo que falte |
 | 03 CV base | 1.0 | Sin llenar | `/configurar`, paso 6 (CV base): redacta el CV en español e inglés desde 02 |
 | 04 Preferencias | 1.0 | Sin llenar | `/configurar`, paso 4 (Preferencias): región, modalidad, sueldo y exclusiones |
@@ -32,7 +32,7 @@
 
 La numeración no impone orden.
 
-**Búsquedas:** viven en los registros (pestaña `busquedas` y las relacionadas). Este mapa no las registra, y una búsqueda no obliga a editar ni a volver a subir ningún módulo (07/BUS-REGISTRO).
+**Búsquedas:** viven en los registros (pestaña `busquedas` y las relacionadas). Este mapa no las registra, y una búsqueda no obliga a editar ningún módulo (07/BUS-REGISTRO).
 
 ## INVENTARIO — Qué hay en el proyecto
 
@@ -50,7 +50,7 @@ La numeración no impone orden.
 | 09_GENERACION_DE_CV.md | Flujo, CV-SINTESIS, controles, plantilla y color del CV | Procedimiento y diseño de CV |
 | 10_ANALISIS_DE_TENDENCIAS.md | Reglas de tendencias | Método |
 | 11_ESQUEMAS_DE_REGISTROS.md | Esquema de los registros, con su bloque (REG-ESQUEMA), y cómo se crea y se usa el archivo de registros | Esquema de datos |
-| Registros: hoja de Google `ChambaKit_Registros` o, en modo local, `ChambaKit_Registros.xlsx` (00, «Registros») | Pestañas vacantes, observaciones, habilidades_vacante, documentos, busquedas, evaluaciones e informes; la hoja, vinculada desde Drive | **Datos operativos** |
+| Archivo de registros: `ChambaKit_Registros.xlsx` (00, «Registros») | Pestañas vacantes, observaciones, habilidades_vacante, documentos, busquedas, evaluaciones e informes. Vive en la copia y solo lo escribe el canal Code; el proyecto no lo recibe, sino su instantánea | **Datos operativos** |
 | `instantanea/`: `informes.md` y `vacantes.md` | Copia en Markdown de los registros para el canal Web: las últimas 10 búsquedas con su tabla resumen y las vacantes evaluadas no cerradas. La regenera la herramienta de 11/REG-LOCAL con cada escritura; la plantilla no la trae | Vista, nunca se edita a mano (11/REG-INSTANTANEA) |
 
 ## OPERACIONES — Qué consultar
@@ -83,5 +83,5 @@ No están en el conocimiento del proyecto. Si una sesión los necesita, hay que 
 - **`.markdownlint-cli2.jsonc`:** reglas de formato Markdown que se revisan en Code tras editar (AGENTS.md).
 - **`herramientas/buscar.py`:** script de búsqueda del canal Code (07/BUS-ACCESO-CODE); no se sube al proyecto.
 - **`herramientas/generar_cv.py`:** generador y comprobador de CV del canal Code (09/CV-HERRAMIENTAS); no se sube al proyecto.
-- **`herramientas/registros.py` y `.venv/`:** la herramienta de los registros en modo local y el entorno virtual de Python con que corre (11/REG-LOCAL); no se suben al proyecto.
+- **`herramientas/registros.py` y `.venv/`:** la herramienta del archivo de registros y el entorno virtual de Python con que corre (11/REG-LOCAL); no se suben al proyecto.
 - **`README.md`, `LICENSE`, `CONTRIBUTING.md`, `CONTEXT.md`, `docs/`, `herramientas/auditar_terminos.py` y `herramientas/pruebas/`:** presentación y licencia de la plantilla, y material de quien la mantiene; el titular no los necesita.
