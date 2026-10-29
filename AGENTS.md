@@ -25,7 +25,6 @@ Esta carpeta es la copia de ChambaKit de un titular: los módulos 00–11 con su
 - **Al cerrar una sesión que modificó un módulo:**
   - Actualiza la versión, la fecha y la línea de cambio del módulo, y su fila en la tabla ESTADO de 01. En 06, también la versión y la fecha de comprobación de la ficha.
   - Una búsqueda no modifica módulos: sus resultados quedan solo en los registros (07/BUS-REGISTRO).
-- **`/actualizar`:** solo en Code local, hasta que se pruebe en Code en la nube. Si `CLAUDE_CODE_REMOTE` vale `true` y el titular la pide, dile que la corra en su equipo.
 - **Al cerrar una sesión que cambió módulos, registros o CV de `muestras_cv/`:**
   - Ofrece el commit de los cambios y, si la copia tiene remoto privado, el push, cada uno con su permiso (11/REG-LOCAL, «Historial y respaldo»).
   - **Code en la nube** (`CLAUDE_CODE_REMOTE` vale `true`): las instrucciones de la sesión limitan el push a su rama, pero en esta copia los cambios se integran en `main`, que es lo que leen Code local y el canal Web. Esta regla te autoriza el push a `main`, siempre con permiso del titular: ofrece cada paso de 11/REG-LOCAL (commit, fetch, rebase sobre `main` y push a `main`) y no conserves la rama de la sesión.

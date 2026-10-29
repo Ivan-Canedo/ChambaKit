@@ -1,6 +1,6 @@
 # 04 — Preferencias laborales
 
-**Versión:** 1.0 — 2026-10-17 — Plantilla inicial.
+**Versión:** 1.1 — 2026-10-29 — `paises` lleva también el código alfa-3 del país.
 **Estado:** plantilla sin llenar. Lo llena el paso 4 de `/configurar` (Preferencias) con las respuestas del titular; el bloque de PREF-UBICACION no trae valores.
 
 ## PREF-USO — Interpretación
@@ -53,7 +53,7 @@ Dónde acepta trabajar el titular y desde dónde acepta vacantes remotas. Los lu
 
 | Campo | Qué lleva |
 | --- | --- |
-| `paises` | Cada país que nombran `localidades` o `remoto.paises`. La clave es su código ISO 3166-1 alfa-2, en mayúsculas; el valor, la lista de nombres con que lo escriben los anuncios: en español, en inglés y en otro idioma si sus portales lo usan |
+| `paises` | Cada país que nombran `localidades` o `remoto.paises`. La clave es su código ISO 3166-1 alfa-2, en mayúsculas; el valor, la lista de nombres con que lo escriben los anuncios: en español, en inglés, en otro idioma si sus portales lo usan y su código ISO 3166-1 alfa-3 en mayúsculas, porque algunos portales de Workday escriben la ubicación «MEX.Ciudad» |
 | `localidades` | Un grupo por cada lugar donde el titular acepta trabajo presencial o híbrido: una ciudad, varias, una zona metropolitana, una división del país o el país completo. Lista vacía si solo busca remoto |
 | `localidades[].pais` | Código del país del grupo, clave de `paises` |
 | `localidades[].divisiones` | El estado, provincia, departamento u otra división del país que contiene el grupo, con sus abreviaturas usuales. Vacía si el grupo es el país completo o si las localidades no necesitan división para reconocerse |

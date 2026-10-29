@@ -1,6 +1,6 @@
 # 09 — Generación de CV
 
-**Versión:** 1.3 — 2026-10-28 — En Code en la nube, el CV de `muestras_cv/` llega con el push a `main` y el agente da su enlace de GitHub (CV-HERRAMIENTAS).
+**Versión:** 1.4 — 2026-10-29 — La generación y la comprobación del canal Code también se probaron en Code en la nube (CV-HERRAMIENTAS).
 **Estado:** método de la plantilla, con el diseño por defecto. El color del CV es un dato del titular (CV-PLANTILLA).
 
 ## CV-ALCANCE — Responsabilidad
@@ -124,7 +124,7 @@ Entregar el borrador o los archivos que efectivamente existan, con idioma, forma
 
 | Canal | Generación | Comprobación | Estado |
 | --- | --- | --- | --- |
-| **Code** | LibreOffice sin interfaz: FODT → PDF y FODT → DOCX | `pdftotext` (texto y orden), `pdftoppm` (vistas PNG para revisar), `pdfinfo` (páginas, tamaño) y `pdffonts` (fuentes incrustadas), de poppler | **Probado en Linux.** El paso 6 de `/configurar` instala LibreOffice, poppler y la fuente Carlito |
+| **Code** | LibreOffice sin interfaz: FODT → PDF y FODT → DOCX | `pdftotext` (texto y orden), `pdftoppm` (vistas PNG para revisar), `pdfinfo` (páginas, tamaño) y `pdffonts` (fuentes incrustadas), de poppler | **Probado en Linux, también en Code en la nube.** En Code local, el paso 6 de `/configurar` instala LibreOffice, poppler y la fuente Carlito; en la nube, el hook de la sesión |
 | **Web** (proyecto en claude.ai; necesita Claude) | No comprobado | No comprobado | El contenido se puede adaptar en la web y el archivo se genera en Code |
 
 No hacen falta pandoc, python-docx ni reportlab.

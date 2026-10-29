@@ -2,6 +2,23 @@
 
 Qué trae cada versión de la plantilla y qué hace `/actualizar` en la copia al llegar a ella. Lo escribe el mantenedor (`CONTRIBUTING.md`, «Versión de la plantilla»); en la copia no se edita.
 
+## v2.1 — 2026-10-29
+
+### Qué cambió
+
+- Tu copia funciona en Code en la nube: el mismo agente, en claude.ai/code o en la pestaña Code de la app de Claude, también desde el teléfono, sobre tu repositorio privado de GitHub. Busca, registra y genera tu CV como en tu equipo. `/conectar-nube`, nueva, te guía para prepararla.
+- Cada sesión en la nube se prepara sola al abrirse: instala lo del CV y markdownlint-cli2, y crea `.venv`. En tu equipo, ese paso no hace nada.
+- Al cerrar una sesión en la nube, el agente sube tus cambios a `main` con tu permiso, para que lleguen a tu equipo y al canal Web.
+- Si un portal no está en la lista de dominios de tu entorno de la nube, la búsqueda te dice cuál falta y dónde agregarlo. Workable no funciona en la nube: la búsqueda te dice que sus empresas se buscan en tu equipo.
+- Al dar de alta una empresa, el agente te da en una línea el dominio que va en la lista, por si usas la nube.
+- `/actualizar` ya se puede correr también en la nube.
+- La búsqueda reconoce el país en las ubicaciones de Workday escritas «MEX.Ciudad». Para eso, 04 lleva también el código de tres letras de cada país.
+
+### En la copia
+
+1. **Code en la nube (con el titular):** si `CLAUDE_CODE_REMOTE` vale `true`, la actualización ya corre en la nube: salta esta acción. Si no, dile en dos frases qué gana: buscar, registrar y generar su CV desde el navegador o el teléfono, sin su equipo. Pregúntale si lo quiere. Si lo quiere, dile que, al terminar la actualización, abra una conversación nueva de su agente en esta carpeta, en Code local, y escriba `/conectar-nube`. Esta acción no edita módulos.
+2. **Código alfa-3 en 04 (automática):** si 04 está «Configurado», agrega a la lista de nombres de cada clave de `paises`, en su bloque de PREF-UBICACION, el código ISO 3166-1 alfa-3 de ese país en mayúsculas (`MX` → `MEX`), si no lo tiene. Sale de la clave, así que no hay que preguntarle al titular; muéstraselo en el resumen. La fila de 04 conserva su siguiente paso.
+
 ## v2.0 — 2026-10-27
 
 ### Qué cambió

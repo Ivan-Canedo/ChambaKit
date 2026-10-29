@@ -23,11 +23,10 @@ La actualización necesita red para traer la plantilla. Si `git ls-remote` o `gi
 Revisa todo antes de cambiar nada. Si algo falla, detente y dile al titular qué pasa y qué hacer:
 
 1. **Plantilla:** si `git config --local --get chambakit.mantenedor` da `true`, esta carpeta es la plantilla y no se actualiza: dile al mantenedor que pruebe en un clon temporal (`CONTRIBUTING.md`, «Probar como titular»).
-2. **Canal:** si `CLAUDE_CODE_REMOTE` vale `true`, la sesión corre en Code en la nube, donde la actualización aún no se ha probado (AGENTS.md, «`/actualizar`»). Dile al titular que la corra en Code local, en su equipo, y que después haga el push para que Code en la nube la reciba.
-3. **Repositorio:** `git rev-parse --is-inside-work-tree` debe dar `true`. Si no, la copia salió del ZIP sin `git init`: explícale que la actualización necesita un repositorio y que lo cree con `git init` y un primer commit con todo (README, «Con el ZIP»).
-4. **Sin cambios pendientes:** `git status --porcelain` debe salir vacío, para que la actualización quede en un solo commit y se pueda deshacer. Si no, pídele que haga commit de sus cambios o de sus archivos nuevos, o que los descarte.
-5. **01:** la línea **Versión de la plantilla** debe tener la versión y la URL. Si falta alguna, no se puede elegir la base: pregúntale de qué versión y de qué URL salió su copia (la URL pública es la de su página de GitHub, «generated from …»). Sin esos dos datos, detente.
-6. **Copia privada:** haz la revisión del paso 1 de `/configurar` (`.claude/skills/configurar/SKILL.md`), porque la actualización edita módulos (AGENTS.md, «Copia privada»).
+2. **Repositorio:** `git rev-parse --is-inside-work-tree` debe dar `true`. Si no, la copia salió del ZIP sin `git init`: explícale que la actualización necesita un repositorio y que lo cree con `git init` y un primer commit con todo (README, «Con el ZIP»).
+3. **Sin cambios pendientes:** `git status --porcelain` debe salir vacío, para que la actualización quede en un solo commit y se pueda deshacer. Si no, pídele que haga commit de sus cambios o de sus archivos nuevos, o que los descarte.
+4. **01:** la línea **Versión de la plantilla** debe tener la versión y la URL. Si falta alguna, no se puede elegir la base: pregúntale de qué versión y de qué URL salió su copia (la URL pública es la de su página de GitHub, «generated from …»). Sin esos dos datos, detente.
+5. **Copia privada:** haz la revisión del paso 1 de `/configurar` (`.claude/skills/configurar/SKILL.md`), porque la actualización edita módulos (AGENTS.md, «Copia privada»).
 
 ## Paso 2: Versión destino
 

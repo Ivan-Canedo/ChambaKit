@@ -79,6 +79,16 @@ El clon de prueba solo lleva lo que ya tiene commit. Para probar cambios sin com
 
 Al abrir el clon de prueba en VS Code con Claude Code, el agente debe ofrecer `/configurar`. Marca como sintéticos los datos de prueba y bórralos al terminar, incluidos el archivo de registros, la instantánea y cualquier proyecto web o repositorio de prueba.
 
+### Probar en la nube
+
+Code en la nube (ADR 0007) no se prueba sobre la plantilla: una sesión trabaja sobre un clon de un repositorio de GitHub, sin `.scratch/` ni la marca de mantenedor, y necesita una copia configurada. Para probarlo:
+
+1. **Repositorio privado de prueba:** créalo en tu cuenta de GitHub y sube a su `main` un clon de prueba (ver «Probar como titular») configurado con datos sintéticos, marcados como tales. Ese repositorio sí puede llevar empresas reales en 06, una por adaptador, porque no es la plantilla. Ni su 06 ni lo que se pruebe solo en la nube (un script de comprobación, sus resultados) entra en la plantilla.
+2. **Entorno de la nube:** créalo con `/conectar-nube`, corrida en el clon de prueba en Code local, que también comprueba el repositorio y arma la lista de dominios desde su 06. Para probar el `[FALLO]` de host bloqueado, deja fuera de la lista el host de una de esas empresas.
+3. **Sesión:** abre una en claude.ai/code sobre el repositorio de prueba. Revisa lo que las pruebas automáticas no ven: que el hook prepare la sesión sin preguntar por `.venv`, los `[FALLO]` de host bloqueado y de Workable con la red real, el push a `main` al cerrar y, si cambió `/actualizar`, el `git fetch` de una etiqueta de la plantilla.
+4. **Para un cambio nuevo de la plantilla,** lleva al `main` del repositorio de prueba el diff entre la versión de la que salió y la nueva, y abre una sesión nueva.
+5. **Al terminar,** borra el repositorio de prueba, su entorno de la nube en claude.ai/code y el clon de prueba.
+
 ## Versión de la plantilla
 
 Cada versión publicada es una etiqueta `vX.Y` sobre su commit. `/actualizar` fusiona cada archivo de la copia en tres vías, con la etiqueta que anota su 01 como base, así que una etiqueta publicada no se mueve ni se borra. Para publicar una versión:

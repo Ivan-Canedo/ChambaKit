@@ -82,6 +82,5 @@ Antes de terminar, explícale cómo sigue, en pocas líneas:
 - **Empresa nueva:** al dar de alta una empresa, el agente le da en una línea el dominio que va en la lista (07/BUS-CANALES, «Empresa nueva»). Que lo agregue en el entorno de la nube como en el paso 4 antes de buscarla en la nube.
 - **Al cerrar una sesión en la nube** que cambió algo, el agente le ofrece subir los cambios a `main` en GitHub, con su permiso (11/REG-LOCAL, «Historial y respaldo»). Así los recibe su equipo y, si lo tiene, el proyecto web, donde pulsa «Sync» como siempre.
 - **De vuelta en su equipo,** después de trabajar en la nube, que le pida al agente traer los cambios de GitHub antes de empezar (`git pull`).
-- **`/actualizar`** se corre en Code local, no en la nube.
 
 Si llegó desde `/configurar`, dile que vuelva a esa conversación para cerrar la configuración.
