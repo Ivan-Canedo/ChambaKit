@@ -1,6 +1,6 @@
 # 06 — Empresas objetivo y fichas
 
-**Versión:** 1.3 — 2026-10-28 — Workable no funciona en Code en la nube; sus empresas se buscan en Code local (CAT-PLATAFORMAS).
+**Versión:** 1.4 — 2026-10-28 — CAT-PLATAFORMAS da los hosts de cada plataforma para la lista de dominios del entorno de la nube y una vacante de Eightfold se lee por su API; CAT-REGLAS manda el alta en la nube a 07.
 **Estado:** plantilla sin empresas. Las agrega el paso 7 de `/configurar` (Empresas), cada una con su ficha y la configuración de su plataforma de reclutamiento.
 
 ## CAT-EMPRESAS — Catálogo
@@ -16,7 +16,7 @@ El script de búsqueda (07/BUS-ACCESO-CODE) toma los IDs de esta tabla: sin argu
 
 - **Una empresa = una fila + una ficha** `## EMP-<ID> — <Nombre>` en este archivo. Al agregar una: asignar un ID nuevo, sin reutilizar (`EMP-` más un nombre corto en mayúsculas, con letras sin acentos, dígitos y guiones); añadir la fila y escribir la ficha según FICHA-PLANTILLA, dejando como pendiente lo no comprobado. La herramienta de registros lee el catálogo, así que el ID vale para `empresa_id` desde que está aquí (11/REG-CAMPOS).
 - **Estado:** «Objetivo» para las que el titular quiere seguir; «Explorada» para una que se conserva solo porque tiene vacantes registradas. Las dos se buscan por defecto, así que una explorada también lleva su configuración.
-- **Plataforma:** identificar la plataforma de reclutamiento del portal oficial (CAT-PLATAFORMAS dice cómo se reconoce cada una). Si el script tiene su adaptador, basta el bloque de configuración de la ficha. Si no lo tiene, o el portal es un sitio propio, buscar la API que usa el portal y revisar su `robots.txt` antes de construir un adaptador en `herramientas/buscar.py` de esta copia; después, describir su configuración en CAT-PLATAFORMAS. Sin una ruta que el `robots.txt` permita, la empresa no entra al catálogo.
+- **Plataforma:** identificar la plataforma de reclutamiento del portal oficial (CAT-PLATAFORMAS dice cómo se reconoce cada una). Si el script tiene su adaptador, basta el bloque de configuración de la ficha. Si no lo tiene, o el portal es un sitio propio, buscar la API que usa el portal y revisar su `robots.txt` antes de construir un adaptador en `herramientas/buscar.py` de esta copia; después, describir su configuración en CAT-PLATAFORMAS. Sin una ruta que el `robots.txt` permita, la empresa no entra al catálogo. En Code en la nube, el alta sigue 07/BUS-CANALES («Empresa nueva»).
 - **Comprobación:** al dar de alta una empresa o cambiar su configuración, correr el script solo con su ID; debe pasar sus comprobaciones (`[OK]`, o `[SIN TOTAL]` con la comprobación de su ficha). Esa búsqueda de prueba no se registra.
 - **Al editar una ficha:** actualizar su versión y su fecha de comprobación. La fecha de edición no es fecha de verificación.
 - **Empresas nuevas:** se buscan según 07/BUS-REGLAS; una explorada entra al catálogo solo si el titular la acepta.
@@ -24,7 +24,17 @@ El script de búsqueda (07/BUS-ACCESO-CODE) toma los IDs de esta tabla: sin argu
 
 ## CAT-PLATAFORMAS — Configuración por plataforma
 
-Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo la lee el script. Las plataformas con adaptador en esta copia son las que lista `python3 -I herramientas/buscar.py --help`. Un adaptador construido en la copia se describe aquí con las mismas partes.
+Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo la lee el script. Las plataformas con adaptador en esta copia son las que lista `python3 -I herramientas/buscar.py --help`. Un adaptador construido en la copia se describe aquí con las mismas partes y agrega su fila a esta tabla.
+
+| Plataforma | Hosts | Code en la nube |
+| --- | --- | --- |
+| Workday | El del `portal` de cada ficha (`<empresa>.wd<N>.myworkdayjobs.com`); `*.myworkdayjobs.com` los cubre todos | Funciona |
+| Eightfold | El del `portal` de cada ficha | Funciona. Una vacante se revisa por la API (`url_fuente`, `position_details`), no por `url_oficial` («Detalle desde Web») |
+| Workable | `apply.workable.com` | No funciona: Workable bloquea las IP de la nube y sus empresas se buscan en Code local |
+| SmartRecruiters | `careers.smartrecruiters.com`, `jobs.smartrecruiters.com` y `www.smartrecruiters.com` | Funciona |
+| Oracle Recruiting Cloud | El del `portal` de cada ficha | Funciona |
+
+**Hosts:** los que pide el adaptador, `robots.txt` incluido. Son los que deja pasar la lista de dominios del entorno de la nube: la lista son los hosts de las plataformas de las fichas del catálogo, sin repetir, un dominio por línea. Workable puede quedarse fuera, porque no funciona en la nube.
 
 ### Workday
 
@@ -60,6 +70,7 @@ Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo 
   - **`filtros`:** los `filterName` de `filterDef.allFilters` en la respuesta del listado, con sus opciones por valor o por nombre visible. El script avisa con «revisar» si una opción ya no aparece.
   - **`texto`:** la búsqueda libre del portal (`query`), que también trae vacantes parecidas.
 - **Detalle:** `GET /api/pcsx/position_details?position_id=<id>&domain=<dominio>&hl=en`, con el `id` numérico del listado, no `displayJobId`.
+- **Detalle desde Web:** la página de `url_oficial` carga la ubicación y la descripción con JavaScript, así que la herramienta de lectura web solo trae el título, también en Code en la nube. La vacante se lee en la URL de ese detalle: su `url_fuente` si ya está registrada; si no, con su `id` numérico y el `domain` de la ficha.
 - **Vigencia:** `positionUserActions.applyAction.status`. `allowed` (postulación directa) o `log_in` (postulación tras iniciar sesión) = postulación activa; cualquier otro valor sale como «Revisar».
 - **Comprobación de ID:** el `id` del detalle es el pedido.
 

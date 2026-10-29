@@ -1,6 +1,6 @@
 # 07 — Método de búsqueda
 
-**Versión:** 1.6 — 2026-10-28 — En Code en la nube, una empresa en Workable falla tras un solo intento y se busca en Code local (BUS-ACCESO-CODE).
+**Versión:** 1.7 — 2026-10-28 — BUS-CANALES trata Code local y Code en la nube como un canal y da el host al dar de alta una empresa; BUS-PUNTUAL lee Eightfold por la API, atiende una URL fuera de la lista de dominios y acepta el anuncio pegado de una vacante que no se pudo leer.
 **Estado:** método de la plantilla. Queda listo con la región de 04 y las fichas de 06, en el paso 7 de `/configurar` (Empresas).
 
 ## BUS-ALCANCE — Responsabilidad
@@ -30,12 +30,14 @@ Las reglas de este método valen para cualquier titular. Si el titular cambia un
 
 ## BUS-CANALES — Qué se hace en cada canal
 
+- **Code local y Code en la nube:** son el mismo canal Code, con las mismas reglas. Cambia el Entorno de la nube: cada sesión de Code en la nube trabaja sobre un clon nuevo del repositorio privado de la copia y solo llega a los hosts de la lista de dominios del entorno de la nube (06/CAT-PLATAFORMAS, «Hosts»). Lo que esa lista cambia va marcado «Code en la nube»: los fallos de la búsqueda (BUS-ACCESO-CODE), el alta de una empresa (abajo) y la comprobación puntual (BUS-PUNTUAL).
 - **Búsquedas:** solo en Code, porque la terminal llega directo a los portales, con GET y POST, y `herramientas/buscar.py` da conteos, IDs y campos exactos (BUS-ACCESO-CODE). Si el titular pide una búsqueda desde Web, el agente le dice que se hace en Code.
 - **Comprobaciones puntuales:** en los dos canales (BUS-PUNTUAL). Desde Web, con la herramienta de lectura web del chat (BUS-ACCESO-WEB).
 - **Registros:** solo los escribe Code, con `herramientas/registros.py` (00, «Escritura de registros»). Web lee la instantánea (11/REG-INSTANTANEA) y deja en una nota para Code lo que haya que conservar (00, «Cambios a los registros»).
 - **Continuidad:** lo que registra una búsqueda en Code (vacantes, observaciones, requisitos, evaluaciones y la tabla resumen en `informes`) se usa desde Web para ver la tabla, pedir el detalle de una vacante o adaptar el CV, sin repetir la búsqueda (08/EVAL-INFORME).
 - **`robots.txt`:** solo se usan rutas que el sitio permite, en ambos canales. La herramienta web lo respeta por sí sola. En Code, cada adaptador lo comprueba en cada búsqueda, y la ficha anota lo que se revisó al darla de alta. Si una API lo prohíbe, se busca otra ruta del sitio oficial; no se rodea.
 - **Empresa sin API:** buscar la API que usa su portal; a veces está en el dominio de la empresa y no en el de la plataforma. Si no hay, un navegador sin interfaz (Chromium headless) en Code.
+- **Empresa nueva:** si su plataforma tiene adaptador, basta la ficha (06/CAT-REGLAS). Al darla de alta, el agente le da al titular, en una línea de su respuesta, el host que va en la lista de dominios del entorno de la nube (06/CAT-PLATAFORMAS, «Hosts»), para si usa Code en la nube; la copia no anota si la usa, así que la línea va siempre. En Workable, la línea dice en cambio que esa empresa se busca en Code local. Sin adaptador, la investigación de su API (arriba) pide hosts que la lista no deja pasar: se hace en Code local o, en Code en la nube, con los dominios que el titular agrega a mano en el Entorno de la nube mientras se investiga.
 
 ## BUS-ACCESO-CODE — Script de búsqueda
 
@@ -178,6 +180,8 @@ Las vacantes no relacionadas quedan en `vacantes` y `observaciones`, sin requisi
 Leer el anuncio oficial de una vacante, o de unas pocas que el titular nombra, sin recorrer ningún listado. Se hace en los dos canales (BUS-CANALES) y no sigue BUS-PASOS: no hay listado, cobertura ni comparación.
 
 - **Lectura:** en Code, la terminal pide el detalle oficial de cada vacante por la misma ruta que usa el adaptador de su plataforma (06/CAT-PLATAFORMAS), que su `robots.txt` permite, y comprueba su ID; `buscar.py` no lee una vacante suelta; en Web, según BUS-ACCESO-WEB. La vigencia sigue BUS-VIGENCIA.
+- **Eightfold:** la vacante se lee por su API de detalle, no en `url_oficial` (06/CAT-PLATAFORMAS, «Eightfold»).
+- **URL fuera de la lista (Code en la nube):** si la lectura falla con `getaddrinfo ENOTFOUND` en la herramienta de lectura web o con el error de túnel del proxy (`Tunnel connection failed: 403`) en Python, el host no está en la lista de dominios del entorno de la nube. El agente lo dice y ofrece dos salidas: que el titular pegue el texto del anuncio, que se usa como aportado por él, o que agregue el host en claude.ai/code (entorno → red → Custom) para volver a leerlo.
 - **Desde Web:** lo que el titular quiera conservar (observación, requisitos o evaluación) queda en una nota para Code (00, «Cambios a los registros»).
 - **Registro, solo en Code:** sin `importar`, que es para la salida de `buscar.py`: `agregar` con las filas nuevas y después `actualizar` con `ultima_observacion_id` y los campos que cambiaron en las vacantes ya registradas. La herramienta comprueba cada fila de la nota contra el esquema; si rechaza una, se corrige con el titular.
 
@@ -185,5 +189,5 @@ Leer el anuncio oficial de una vacante, o de unas pocas que el titular nombra, s
 | --- | --- |
 | `busquedas` | Una fila por comprobación. `fecha_hora`: la de la lectura. `solicitud_alcance`: «Comprobación puntual» y las vacantes pedidas. `recursos_versiones`: las de los módulos usados, que la nota de Web trae. `fuentes_consultas_filtros`: las URL leídas y cómo se leyeron; desde Web, «Herramienta de lectura web del chat». `cobertura_limitaciones`: «Comprobación puntual, sin listado» y lo que no se pudo leer. `no_revisado_pendientes`: lo que quedó sin leer, o `Ninguno`. `comparacion_anterior`: «No comparable: comprobación puntual» |
 | `vacantes` | Solo si la vacante no está registrada: los campos leídos, `primera_deteccion` = fecha de la lectura. Su empresa necesita un EMP-ID en 06 (11/REG-CAMPOS) |
-| `observaciones` | Una fila por vacante leída. `fecha_verificacion`: la de la lectura, con hora si se conoce. `tipo_fuente`: `Oficial` si se leyó en su anuncio oficial; `Aportada por el titular` si el titular pegó el anuncio y no se encontró en el portal, sin `url_fuente`, con vigencia `No verificable` y el motivo «Anuncio pegado por el titular» |
+| `observaciones` | Una fila por vacante leída. `fecha_verificacion`: la de la lectura, con hora si se conoce. `tipo_fuente`: `Oficial` si se leyó en su anuncio oficial; `Aportada por el titular` si el titular pegó el anuncio porque no se encontró en el portal o no se pudo leer, sin `url_fuente`, con vigencia `No verificable` y el motivo «Anuncio pegado por el titular» |
 | `habilidades_vacante` y `evaluaciones` | Si la vacante se evaluó, según 08/EVAL-REGISTRO |
