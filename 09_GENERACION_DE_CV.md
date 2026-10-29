@@ -1,6 +1,6 @@
 # 09 — Generación de CV
 
-**Versión:** 1.2 — 2026-10-27 — Desde Web, la adaptación toma los requisitos y la evaluación de la instantánea (CV-ENTRADAS).
+**Versión:** 1.3 — 2026-10-28 — En Code en la nube, el CV de `muestras_cv/` llega con el push a `main` y el agente da su enlace de GitHub (CV-HERRAMIENTAS).
 **Estado:** método de la plantilla, con el diseño por defecto. El color del CV es un dato del titular (CV-PLANTILLA).
 
 ## CV-ALCANCE — Responsabilidad
@@ -128,6 +128,8 @@ Entregar el borrador o los archivos que efectivamente existan, con idioma, forma
 | **Web** (proyecto en claude.ai; necesita Claude) | No comprobado | No comprobado | El contenido se puede adaptar en la web y el archivo se genera en Code |
 
 No hacen falta pandoc, python-docx ni reportlab.
+
+**Code en la nube:** el CV se genera igual, pero los archivos quedan en la máquina de la sesión. El que se guarda en `muestras_cv/` le llega al titular con el commit y el push a `main` del cierre (11/REG-LOCAL, «Historial y respaldo»). Después del push, el agente le da el enlace de GitHub de cada archivo, `https://github.com/<dueño>/<repositorio>/blob/main/muestras_cv/<archivo>`, con el dueño y el repositorio con que termina `git remote get-url origin` (en la nube, esa URL puede pasar por un proxy local, pero termina igual); como el repositorio es privado, lo abre con su sesión de GitHub, también desde el teléfono.
 
 **Script `herramientas/generar_cv.py`** (local, no se sube al proyecto):
 

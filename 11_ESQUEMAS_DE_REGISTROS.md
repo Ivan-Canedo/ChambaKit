@@ -1,6 +1,6 @@
 # 11 — Esquema de registros
 
-**Versión:** 1.5 — 2026-10-27 — REG-LOCAL documenta `migrar`, que pasa a 2.0 una hoja descargada o un archivo de registros 1.x.
+**Versión:** 1.6 — 2026-10-28 — En Code en la nube, los cambios se integran en `main` al cerrar, y un choque en el archivo de registros se resuelve reimportando (REG-LOCAL, «Historial y respaldo»).
 **Estado:** esquema de la plantilla. El paso 8 de `/configurar` (Registros) crea el archivo de registros desde el bloque de REG-ESQUEMA.
 
 ## Responsabilidad
@@ -402,6 +402,9 @@ En Windows, el Python es `.venv\Scripts\python.exe`. `--help` da las órdenes y 
 - **Lectura:** `leer` da una pestaña completa o las filas de unos IDs. `informe` da la tabla resumen de una búsqueda: sus filas de `informes` con las columnas calculadas de REG-CAMPOS, a la fecha de hoy en la zona horaria de 04 y con el umbral de «antigua» de 08/EVAL-ACUERDOS.
 - **Encabezados:** la herramienta los compara con el bloque en cada uso y se detiene si no coinciden (REG-DECISIONES, «Encabezados»).
 - **Historial y respaldo:** git. El archivo se versiona en la copia, así que no se ignora. Al cerrar una sesión que lo modificó, el agente le ofrece al titular un commit con él y, si la copia tiene remoto privado, el push.
+  - **Code en la nube:** la sesión trabaja en un clon nuevo, en una rama propia que Code local y el canal Web no leen. Al cerrar una sesión que cambió módulos, registros o CV de `muestras_cv/`, el agente integra en `main`, con permiso del titular para cada paso: commit, `git fetch origin main`, `git rebase origin/main` y `git push origin HEAD:main`. Si `main` no avanzó desde que abrió la sesión, el rebase no cambia nada. Si el push se rechaza porque `main` avanzó otra vez, se repiten el fetch y el rebase.
+  - **La rama de la sesión no se conserva:** no se sube. Si ya está en el remoto, el agente la borra después del push a `main` (`git push origin --delete <rama>`), con permiso.
+  - **Choque en el archivo de registros:** pasa si otra sesión registró en paralelo. El archivo es binario, así que no se fusiona a mano. En cada commit que choque, el agente toma el archivo y la instantánea del `main` nuevo (`git checkout origin/main -- ChambaKit_Registros.xlsx instantanea/`), los agrega y sigue el rebase (`git rebase --continue`); si el commit queda vacío, porque solo traía registros, lo salta (`git rebase --skip`). Al terminar el rebase, rehace una sola vez sobre ese archivo las escrituras de la sesión: `importar` con la misma salida JSON y el mismo archivo de decisiones, que siguen en el directorio temporal de la sesión, y `agregar` y `actualizar` con los IDs que devuelva `importar`, porque pueden cambiar. La herramienta regenera la instantánea completa al escribir. Con eso hace un commit nuevo y el push a `main`.
 - **Edición a mano:** el titular puede abrir el archivo en una hoja de cálculo para consultarlo. Las filas se escriben con la herramienta, que es la que las comprueba.
 
 ## REG-INSTANTANEA — Instantánea para el canal Web

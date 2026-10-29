@@ -1,6 +1,6 @@
 # 01 — Mapa y estado del proyecto
 
-**Versión:** 1.7 — 2026-10-28 — El inventario lista el hook de la nube, que prepara cada sesión de Code en la nube.
+**Versión:** 1.8 — 2026-10-28 — ESTADO toma las versiones de 00, 09 y 11, que documentan la integración en `main` desde Code en la nube.
 
 ## ESTADO — Punto de continuidad
 
@@ -10,7 +10,7 @@
 
 | Módulo | Versión | Estado | Siguiente paso sugerido |
 | --- | --- | --- | --- |
-| 00 Instrucciones | 1.4 | Sin llenar | `/configurar`, paso 8 (Registros): crea el archivo de registros |
+| 00 Instrucciones | 1.5 | Sin llenar | `/configurar`, paso 8 (Registros): crea el archivo de registros |
 | 02 Perfil maestro | 1.0 | Sin llenar | `/configurar`, paso 3 (Perfil maestro): extrae la trayectoria del CV actual y entrevista lo que falte |
 | 03 CV base | 1.0 | Sin llenar | `/configurar`, paso 6 (CV base): redacta el CV en español e inglés desde 02 |
 | 04 Preferencias | 1.0 | Sin llenar | `/configurar`, paso 4 (Preferencias): región, modalidad, sueldo y exclusiones |
@@ -18,9 +18,9 @@
 | 06 Empresas | 1.3 | Sin llenar | `/configurar`, paso 7 (Empresas): fichas de las empresas objetivo |
 | 07 Método de búsqueda | 1.6 | Sin llenar | `/configurar`, paso 7 (Empresas): queda listo con la región de 04 y las fichas de 06 |
 | 08 Evaluación | 1.3 | Sin llenar | `/configurar`, paso 5 (Habilidades y roles): queda listo con las condiciones de 04 y las familias de 05 |
-| 09 Generación de CV | 1.2 | Sin llenar | `/configurar`, paso 6 (CV base): color del CV |
+| 09 Generación de CV | 1.3 | Sin llenar | `/configurar`, paso 6 (CV base): color del CV |
 | 10 Tendencias | 1.1 | Sin llenar | `/configurar`, paso 8 (Registros): queda listo cuando existen los registros |
-| 11 Esquema de registros | 1.5 | Sin llenar | `/configurar`, paso 8 (Registros): crea los registros desde este esquema |
+| 11 Esquema de registros | 1.6 | Sin llenar | `/configurar`, paso 8 (Registros): crea los registros desde este esquema |
 
 **Orden sugerido:**
 

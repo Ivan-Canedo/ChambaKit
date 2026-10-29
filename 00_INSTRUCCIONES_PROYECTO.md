@@ -1,6 +1,6 @@
 # ChambaKit — Instrucciones del proyecto
 
-Versión 1.4 — 2026-10-27 — El canal Web consulta la instantánea y hace comprobaciones puntuales; lo que se conserve va en una nota para Code.
+Versión 1.5 — 2026-10-28 — Los módulos se editan en el canal Code, local o en la nube («Cambios a los módulos»).
 
 Este texto va en el campo «Instrucciones» del proyecto.
 
@@ -78,7 +78,7 @@ En un chat de este proyecto en claude.ai:
 
 ## Cambios a los módulos
 
-Los módulos solo se editan en el canal Code, en la copia local. El conocimiento del proyecto es una réplica de solo lectura de la copia. Si en la conversación surge un cambio a un módulo, no entregar el archivo editado. Al cerrar, dejar una **nota para Code** con:
+Los módulos solo se editan en el canal Code. El conocimiento del proyecto es una réplica de solo lectura de la copia. Si en la conversación surge un cambio a un módulo, no entregar el archivo editado. Al cerrar, dejar una **nota para Code** con:
 
 - el módulo y la sección o ID;
 - el cambio propuesto y su motivo;
