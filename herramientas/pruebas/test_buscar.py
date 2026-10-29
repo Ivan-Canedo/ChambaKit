@@ -785,6 +785,25 @@ class ClasificacionDeUbicaciones(ConPortalFalso):
         ])
         self.assertEqual(self.regiones(r), {"R-1": "Dentro", "R-3": "Indeterminada", "R-4": "Indeterminada"})
 
+    def test_una_ubicacion_codigo_punto_ciudad_nombra_el_pais_del_codigo(self):
+        # Algunos sitios de Workday escriben «MEX.Ciudad»; el código va entre los nombres del país en 04, y un
+        # punto entre abreviaturas («U.S.A.») no separa partes
+        paises = {**PAISES, "XA": ["País A", "XAA"], "XB": ["P.A.Í.S. B"]}
+        portal = WorkdayFalso([
+            {"id": "R-1", "pais": "País A", "ubicaciones": ["XAA.Ciudad A7"]},
+            {"id": "R-2", "pais": "País A", "ubicaciones": ["XAA.Remote"], "modalidad": "Remote"},
+            {"id": "R-3", "pais": "País B", "ubicaciones": ["Ciudad B1, P.A.Í.S. B"]},
+            {"id": "R-4", "pais": "País C", "ubicaciones": ["XCC.Ciudad C1"]},
+        ], faceta_de_pais=False, faceta_de_remoto=False)
+        bloque = preferencias([grupo("XA"), grupo("XB")], alcance="paises", paises_remoto=["XA"], paises=paises)
+        r, errores = self.buscar(bloque, portal)
+        self.assertEqual(self.listados(portal), [
+            {"locations": ["locations:Ciudad B1, P.A.Í.S. B", "locations:XAA.Ciudad A7", "locations:XAA.Remote"]},
+            {"locations": ["locations:XAA.Remote"]},
+        ])
+        self.assertEqual(self.regiones(r), {"R-1": "Dentro", "R-2": "Dentro", "R-3": "Dentro"})
+        self.assertNotIn("no ofrece", errores)
+
 
 class ConsultaDeLaFicha(ConPortalFalso):
     def test_la_consulta_de_la_ficha_reemplaza_el_listado_por_paises(self):

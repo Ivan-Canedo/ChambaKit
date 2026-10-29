@@ -329,11 +329,13 @@ def sin_generales(texto):
 
 
 def nombra_pais(literal, nombres):
-    """La ubicación nombra uno de esos países como una de sus partes, separadas por comas, guiones con espacios
-    o paréntesis, sin contar las palabras generales: «Ciudad, País», «País - Ciudad», «Remote - País». Así
-    otro lugar que contiene el nombre del país («Nuevo País A») no lo nombra."""
+    """La ubicación nombra uno de esos países como una de sus partes, separadas por comas, guiones con espacios,
+    paréntesis o un punto entre palabras, sin contar las palabras generales: «Ciudad, País», «País - Ciudad»,
+    «Remote - País», «MEX.Ciudad». Así otro lugar que contiene el nombre del país («Nuevo País A») no lo nombra.
+    El punto de una abreviatura («U.S.A.», «Edo. A») no separa."""
     buscados = {sin_generales(n) for n in nombres}
-    return any(sin_generales(parte) in buscados for parte in re.split(r"\s+[-–]\s+|[,|/()]", literal))
+    partes = re.split(r"\s+[-–]\s+|[,|/()]|(?<=[^\W\d_]{2})\.(?=[^\W\d_]{2})", literal)
+    return any(sin_generales(parte) in buscados for parte in partes)
 
 
 def paises_nombrados(literal, pref):
