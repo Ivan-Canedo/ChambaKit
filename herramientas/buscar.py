@@ -61,6 +61,16 @@ class HostBloqueado(Fallo):
         self.host = host
 
 
+class IpBloqueada(Fallo):
+    """En Code en la nube, el sitio responde HTTP 429 con el «error code: 1015» de Cloudflare: bloquea las IP de la
+    nube, como Workable (07/BUS-ACCESO-CODE). No se reintenta: la empresa se busca en Code local."""
+
+    def __init__(self, host):
+        super().__init__(f"{host} bloquea las IP de Code en la nube (HTTP 429, «error code: 1015» de Cloudflare); "
+                         "busca esta empresa en Code local", 429)
+        self.host = host
+
+
 def error(mensaje):
     """Configuración que falta o no sirve: termina con código 2 sin buscar nada."""
     print(mensaje, file=sys.stderr)
@@ -179,7 +189,8 @@ def leer_ficha(eid, ficha):
 
 def pedir(url, cuerpo=None, intentos=3, como_json=True, extra=None):
     """GET (o POST con cuerpo JSON) que devuelve JSON, o texto si como_json=False.
-    extra: cabeceras adicionales que pida un adaptador. Reintenta errores transitorios, también HTTP 429."""
+    extra: cabeceras adicionales que pida un adaptador. Reintenta errores transitorios, también HTTP 429, salvo el
+    bloqueo de las IP de la nube."""
     datos = json.dumps(cuerpo).encode() if cuerpo is not None else None
     # Algunas plataformas responden JSON en lugar de la página solo si se pide application/json
     cabeceras = {"User-Agent": UA, "Accept": "application/json" if como_json else "text/html,application/xhtml+xml"}
@@ -194,6 +205,9 @@ def pedir(url, cuerpo=None, intentos=3, como_json=True, extra=None):
             with urllib.request.urlopen(req, timeout=60) as r:
                 return json.load(r) if como_json else r.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as e:
+            if (e.code == 429 and os.environ.get("CLAUDE_CODE_REMOTE") == "true"
+                    and b"error code: 1015" in e.read(2000)):
+                raise IpBloqueada(urllib.parse.urlsplit(url).hostname) from e
             if (e.code < 500 and e.code != 429) or i == intentos - 1:
                 raise Fallo(f"HTTP {e.code} en {url}", e.code) from e
             if e.code == 429:
@@ -248,7 +262,7 @@ def comprobar_robots(sitio, urls):
     url = f"{sitio}/robots.txt"
     try:
         reglas = pedir(url, como_json=False)
-    except HostBloqueado:
+    except (HostBloqueado, IpBloqueada):
         raise
     except Fallo as e:
         if e.codigo in (404, 410):

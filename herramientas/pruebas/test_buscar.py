@@ -16,6 +16,7 @@ import html
 import importlib.util
 import io
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -601,15 +602,17 @@ CAMPOS_DE_VACANTES_Y_OBSERVACIONES = {"empresa_id", "job_id", "titulo", "url_ofi
 
 
 class ConPortalFalso(CopiaFicticia):
-    def buscar(self, bloque_04, portal, *argumentos, consulta=None, codigo_esperado=0, red=None):
+    def buscar(self, bloque_04, portal, *argumentos, consulta=None, codigo_esperado=0, red=None, nube=False):
         """Corre main() del script de la copia con el portal falso en lugar de la red. Con red, el portal solo da la
-        configuración: la red falsa reemplaza urllib.request.urlopen, sin esperas entre intentos, y se ejercita
-        el pedir() real."""
+        configuración: la red falsa reemplaza urllib.request.urlopen, las esperas entre intentos se anotan en
+        self.esperas sin esperar, y se ejercita el pedir() real. nube: corre como Code en la nube
+        (CLAUDE_CODE_REMOTE=true); si no, sin la variable."""
         configuracion = {"plataforma": portal.PLATAFORMA, "portal": portal.PORTAL, "consulta": consulta}
         self.escribir(modulo_04(bloque_04), modulo_06({"EMP-ACME": ficha("EMP-ACME", configuracion)}))
         especificacion = importlib.util.spec_from_file_location("buscar_copia", self.dir / "herramientas" / "buscar.py")
         script = importlib.util.module_from_spec(especificacion)
         especificacion.loader.exec_module(script)
+        self.esperas = []
         if red is None:
             script.pedir = portal
             portal.script = script  # para que el portal falso responda con los errores del script
@@ -617,9 +620,13 @@ class ConPortalFalso(CopiaFicticia):
         else:
             sustituir = contextlib.ExitStack()
             sustituir.enter_context(mock.patch.object(script.urllib.request, "urlopen", red))
-            sustituir.enter_context(mock.patch.object(script.time, "sleep", lambda s: None))
+            sustituir.enter_context(mock.patch.object(script.time, "sleep", self.esperas.append))
+        entorno = {k: v for k, v in os.environ.items() if k != "CLAUDE_CODE_REMOTE"}
+        if nube:
+            entorno["CLAUDE_CODE_REMOTE"] = "true"
         salida, errores, codigo = io.StringIO(), io.StringIO(), 0
         with mock.patch.object(sys, "argv", ["buscar.py", *argumentos]), sustituir, \
+                mock.patch.dict(os.environ, entorno, clear=True), \
                 contextlib.redirect_stdout(salida), contextlib.redirect_stderr(errores):
             try:
                 script.main()
@@ -868,6 +875,50 @@ class HostBloqueadoPorLaLista(ConPortalFalso):
         self.assertEqual(len(red.pedidas), 3)
         self.assertIn(f"no se pudo leer {WorkdayFalso.HOST}/robots.txt", r["error"])
         self.assertNotIn("lista de dominios", r["error"])
+
+
+class RedConLimite:
+    """La red de un sitio que responde HTTP 429 a todo, con ese cuerpo y Retry-After. Anota cada URL que se
+    pidió."""
+
+    def __init__(self, cuerpo, retry_after="7"):
+        self.cuerpo, self.retry_after, self.pedidas = cuerpo, retry_after, []
+
+    def __call__(self, req, timeout=None):
+        self.pedidas.append(req.full_url)
+        raise urllib.error.HTTPError(req.full_url, 429, "Too Many Requests", {"Retry-After": self.retry_after},
+                                     io.BytesIO(self.cuerpo))
+
+
+class WorkableEnLaNube(ConPortalFalso):
+    BLOQUE = preferencias([grupo("XA", nombres=["Ciudad A"])])
+    # Lo que responde Cloudflare cuando Workable bloquea las IP de la nube
+    BLOQUEO = b"error code: 1015"
+
+    def test_en_la_nube_el_bloqueo_de_cloudflare_manda_a_code_local_tras_un_solo_intento(self):
+        red = RedConLimite(self.BLOQUEO)
+        r, errores = self.buscar(self.BLOQUE, WorkableFalso([]), codigo_esperado=1, red=red, nube=True)
+        self.assertEqual(red.pedidas, [WorkableFalso.SITIO + "/robots.txt"])
+        self.assertEqual(self.esperas, [])
+        fallo = next(linea for linea in errores.splitlines() if linea.startswith("[FALLO] EMP-ACME: "))
+        self.assertIn("apply.workable.com bloquea las IP de Code en la nube", fallo)
+        self.assertIn("busca esta empresa en Code local", fallo)
+        self.assertNotIn("no se pudo leer", r["error"])
+
+    def test_en_code_local_el_mismo_429_se_reintenta_con_retry_after(self):
+        red = RedConLimite(self.BLOQUEO)
+        r, _ = self.buscar(self.BLOQUE, WorkableFalso([]), codigo_esperado=1, red=red)
+        self.assertEqual(len(red.pedidas), 3)
+        self.assertEqual(self.esperas, [7, 7])
+        self.assertIn(f"no se pudo leer {WorkableFalso.SITIO}/robots.txt (HTTP 429", r["error"])
+        self.assertNotIn("Code local", r["error"])
+
+    def test_en_la_nube_un_429_con_otro_cuerpo_se_reintenta_con_retry_after(self):
+        red = RedConLimite(b"Too Many Requests")
+        r, _ = self.buscar(self.BLOQUE, WorkableFalso([]), codigo_esperado=1, red=red, nube=True)
+        self.assertEqual(len(red.pedidas), 3)
+        self.assertEqual(self.esperas, [7, 7])
+        self.assertNotIn("Code local", r["error"])
 
 
 class AdaptadorDeEightfold(ConPortalFalso):

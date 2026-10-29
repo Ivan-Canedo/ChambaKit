@@ -1,6 +1,6 @@
 # 07 — Método de búsqueda
 
-**Versión:** 1.5 — 2026-10-28 — En Code en la nube, el `[FALLO]` de un host fuera de la lista de dominios del entorno nombra el host y dónde agregarlo (BUS-ACCESO-CODE).
+**Versión:** 1.6 — 2026-10-28 — En Code en la nube, una empresa en Workable falla tras un solo intento y se busca en Code local (BUS-ACCESO-CODE).
 **Estado:** método de la plantilla. Queda listo con la región de 04 y las fichas de 06, en el paso 7 de `/configurar` (Empresas).
 
 ## BUS-ALCANCE — Responsabilidad
@@ -62,6 +62,7 @@ python3 -I herramientas/buscar.py [EMP-ID ...] [--salida archivo.json] [--sin-re
 - **Vigencia:** sugiere `Confirmada abierta` solo con el indicador positivo de su plataforma, o, si la plataforma no publica uno (06/CAT-PLATAFORMAS), con la presencia en el listado, como admite BUS-VIGENCIA. Cualquier otro valor sale como «Revisar» y se decide con BUS-VIGENCIA. El motivo de un indicador del detalle ya trae el prefijo «Detalle oficial: » con el que se registra.
 - **Fallos:** si una API cambia de forma o no responde, o su `robots.txt` prohíbe la ruta, la empresa sale como `[FALLO]` con el motivo y la búsqueda de esa empresa queda sin hacer; no se completa a mano por otra vía sin declararlo.
 - **Host fuera de la lista (Code en la nube):** si el `[FALLO]` dice que el host no está en la lista de dominios del entorno de la nube, el agente le da al titular el host con que termina el mensaje, para que lo agregue en claude.ai/code (entorno → red → Custom). Con el host agregado, se vuelve a buscar esa empresa; hasta entonces queda sin hacer, como cualquier `[FALLO]`. El mensaje de `robots.txt` que no se pudo leer es otro caso: ahí falló la petición al portal.
+- **IP bloqueada (Code en la nube):** si el `[FALLO]` dice que el sitio bloquea las IP de Code en la nube y que la empresa se busca en Code local, el sitio respondió HTTP 429 con el `error code: 1015` de Cloudflare, como hace Workable con todas sus cuentas (06/CAT-PLATAFORMAS). El script no lo reintenta, porque esperar no lo resuelve. Esa empresa queda como no revisada en la cobertura (BUS-COBERTURA) y el agente le dice al titular que la busque en Code local. En Code local, el mismo 429 se reintenta como cualquier límite pasajero, con la espera de `Retry-After`.
 - **Qué no hace:** filtrar por familia ROL, evaluar ni escribir en los registros. Eso sigue en los pasos 4–9.
 - **Resumen en pantalla:** una línea por empresa (`[OK]`, `[INCOMPLETA]`, `[SIN TOTAL]` o `[FALLO]`; únicos/total, en la región y remotas), una línea `cobertura:` si la fuente no publica total, y las líneas «revisar» que hay que atender antes de registrar, también las de las remotas fuera de la región. Una vacante sin Job ID publicado se nombra por su URL.
 
@@ -156,7 +157,7 @@ Si la herramienta rechaza la entrada, no escribe nada y dice todos los errores: 
 
 - **`revisar`:** una decisión por cada línea «revisar ubicación» (`region_relacionada` con `motivo_region`) y por cada «revisar vigencia» (`estado_vigencia` con `motivo`, según BUS-VIGENCIA). Cada vacante se nombra como en su línea: por su Job ID o, sin él, por su URL. Una requisición con varias publicaciones (su línea «revisar» lo dice) se registra como una sola vacante, con todas sus ubicaciones, y pide su región. Una decisión también corrige una vacante sin línea «revisar», por ejemplo con la vigencia que se vio en su detalle.
 - **Líneas «revisar» de una empresa,** como un filtro que el portal no ofrece: `importar` las copia a la cobertura. Lo que dejan sin revisar va en `no_revisado_pendientes`.
-- **`[FALLO]`:** cada empresa que falló se nombra, por su EMP-ID, en `no_revisado_pendientes`.
+- **`[FALLO]`:** cada empresa que falló se nombra, por su EMP-ID, en `no_revisado_pendientes`. Una que falló por un bloqueo de Code en la nube (BUS-ACCESO-CODE) se nombra con el motivo, por ejemplo «EMP-ID: apply.workable.com bloquea las IP de Code en la nube; buscar en Code local».
 - **Sin decisión:** si queda una línea «revisar» sin decidir o un `[FALLO]` sin declarar, `importar` no escribe nada.
 
 | Pestaña | Qué se escribe |

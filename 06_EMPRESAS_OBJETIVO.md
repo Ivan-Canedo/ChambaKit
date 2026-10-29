@@ -1,6 +1,6 @@
 # 06 — Empresas objetivo y fichas
 
-**Versión:** 1.2 — 2026-10-27 — Sale el canal del catálogo y de las fichas; una ficha puede decir cómo leer el detalle de una vacante desde Web.
+**Versión:** 1.3 — 2026-10-28 — Workable no funciona en Code en la nube; sus empresas se buscan en Code local (CAT-PLATAFORMAS).
 **Estado:** plantilla sin empresas. Las agrega el paso 7 de `/configurar` (Empresas), cada una con su ficha y la configuración de su plataforma de reclutamiento.
 
 ## CAT-EMPRESAS — Catálogo
@@ -88,6 +88,7 @@ Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo 
 - **Detalle:** `GET https://apply.workable.com/api/v2/accounts/<cuenta>/jobs/<shortcode>`.
 - **Vigencia:** `state`. `published` = publicada; cualquier otro valor sale como «Revisar».
 - **Comprobación de ID:** el `shortcode` del detalle es el pedido.
+- **Code en la nube:** no funciona. Workable bloquea las IP de la nube con un HTTP 429 de Cloudflare (`error code: 1015`); el script falla tras un solo intento y la empresa se busca en Code local (07/BUS-ACCESO-CODE).
 
 | Columna | Campo del listado |
 | --- | --- |
