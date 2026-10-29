@@ -1,6 +1,6 @@
 # 07 — Método de búsqueda
 
-**Versión:** 1.4 — 2026-10-27 — Una búsqueda se registra con `importar` y un archivo de decisiones, y después con `agregar` (BUS-PASOS, BUS-REGISTRO).
+**Versión:** 1.5 — 2026-10-28 — En Code en la nube, el `[FALLO]` de un host fuera de la lista de dominios del entorno nombra el host y dónde agregarlo (BUS-ACCESO-CODE).
 **Estado:** método de la plantilla. Queda listo con la región de 04 y las fichas de 06, en el paso 7 de `/configurar` (Empresas).
 
 ## BUS-ALCANCE — Responsabilidad
@@ -61,6 +61,7 @@ python3 -I herramientas/buscar.py [EMP-ID ...] [--salida archivo.json] [--sin-re
   - `fecha_hora`: la de inicio, en la zona horaria de 04.
 - **Vigencia:** sugiere `Confirmada abierta` solo con el indicador positivo de su plataforma, o, si la plataforma no publica uno (06/CAT-PLATAFORMAS), con la presencia en el listado, como admite BUS-VIGENCIA. Cualquier otro valor sale como «Revisar» y se decide con BUS-VIGENCIA. El motivo de un indicador del detalle ya trae el prefijo «Detalle oficial: » con el que se registra.
 - **Fallos:** si una API cambia de forma o no responde, o su `robots.txt` prohíbe la ruta, la empresa sale como `[FALLO]` con el motivo y la búsqueda de esa empresa queda sin hacer; no se completa a mano por otra vía sin declararlo.
+- **Host fuera de la lista (Code en la nube):** si el `[FALLO]` dice que el host no está en la lista de dominios del entorno de la nube, el agente le da al titular el host con que termina el mensaje, para que lo agregue en claude.ai/code (entorno → red → Custom). Con el host agregado, se vuelve a buscar esa empresa; hasta entonces queda sin hacer, como cualquier `[FALLO]`. El mensaje de `robots.txt` que no se pudo leer es otro caso: ahí falló la petición al portal.
 - **Qué no hace:** filtrar por familia ROL, evaluar ni escribir en los registros. Eso sigue en los pasos 4–9.
 - **Resumen en pantalla:** una línea por empresa (`[OK]`, `[INCOMPLETA]`, `[SIN TOTAL]` o `[FALLO]`; únicos/total, en la región y remotas), una línea `cobertura:` si la fuente no publica total, y las líneas «revisar» que hay que atender antes de registrar, también las de las remotas fuera de la región. Una vacante sin Job ID publicado se nombra por su URL.
 

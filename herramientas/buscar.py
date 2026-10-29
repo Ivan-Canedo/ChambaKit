@@ -51,6 +51,16 @@ class Fallo(Exception):
         self.codigo = codigo
 
 
+class HostBloqueado(Fallo):
+    """El proxy de Code en la nube no dejó salir la petición: el host no está en la lista de dominios del entorno
+    (07/BUS-ACCESO-CODE). No se reintenta ni lo oculta el mensaje del robots.txt."""
+
+    def __init__(self, host):
+        super().__init__(f"el host no está en la lista de dominios del entorno de la nube; agrégalo en claude.ai/code "
+                         f"(entorno → red → Custom) y vuelve a buscar: {host}")
+        self.host = host
+
+
 def error(mensaje):
     """Configuración que falta o no sirve: termina con código 2 sin buscar nada."""
     print(mensaje, file=sys.stderr)
@@ -192,6 +202,9 @@ def pedir(url, cuerpo=None, intentos=3, como_json=True, extra=None):
                 espera = min(int(pedida), 60) if pedida.isdigit() else 5 * espera
         # OSError: también el timeout de lectura, que en Python 3.9 todavía no es TimeoutError
         except (OSError, http.client.HTTPException, json.JSONDecodeError) as e:
+            # El proxy de la nube responde 403 al CONNECT de un host fuera de la lista; urllib lo da como URLError
+            if isinstance(e, urllib.error.URLError) and "Tunnel connection failed: 403" in str(e.reason):
+                raise HostBloqueado(urllib.parse.urlsplit(url).hostname) from e
             if i == intentos - 1:
                 raise Fallo(f"{type(e).__name__}: {e} en {url}") from e
         time.sleep(espera)
@@ -235,6 +248,8 @@ def comprobar_robots(sitio, urls):
     url = f"{sitio}/robots.txt"
     try:
         reglas = pedir(url, como_json=False)
+    except HostBloqueado:
+        raise
     except Fallo as e:
         if e.codigo in (404, 410):
             return  # sin robots.txt, el sitio no prohíbe nada

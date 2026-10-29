@@ -22,6 +22,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import urllib.error
 import urllib.parse
 from unittest import mock
 
@@ -600,17 +601,25 @@ CAMPOS_DE_VACANTES_Y_OBSERVACIONES = {"empresa_id", "job_id", "titulo", "url_ofi
 
 
 class ConPortalFalso(CopiaFicticia):
-    def buscar(self, bloque_04, portal, *argumentos, consulta=None, codigo_esperado=0):
-        """Corre main() del script de la copia con el portal falso en lugar de la red."""
+    def buscar(self, bloque_04, portal, *argumentos, consulta=None, codigo_esperado=0, red=None):
+        """Corre main() del script de la copia con el portal falso en lugar de la red. Con red, el portal solo da la
+        configuración: la red falsa reemplaza urllib.request.urlopen, sin esperas entre intentos, y se ejercita
+        el pedir() real."""
         configuracion = {"plataforma": portal.PLATAFORMA, "portal": portal.PORTAL, "consulta": consulta}
         self.escribir(modulo_04(bloque_04), modulo_06({"EMP-ACME": ficha("EMP-ACME", configuracion)}))
         especificacion = importlib.util.spec_from_file_location("buscar_copia", self.dir / "herramientas" / "buscar.py")
         script = importlib.util.module_from_spec(especificacion)
         especificacion.loader.exec_module(script)
-        script.pedir = portal
-        portal.script = script  # para que el portal falso responda con los errores del script
+        if red is None:
+            script.pedir = portal
+            portal.script = script  # para que el portal falso responda con los errores del script
+            sustituir = contextlib.nullcontext()
+        else:
+            sustituir = contextlib.ExitStack()
+            sustituir.enter_context(mock.patch.object(script.urllib.request, "urlopen", red))
+            sustituir.enter_context(mock.patch.object(script.time, "sleep", lambda s: None))
         salida, errores, codigo = io.StringIO(), io.StringIO(), 0
-        with mock.patch.object(sys, "argv", ["buscar.py", *argumentos]), \
+        with mock.patch.object(sys, "argv", ["buscar.py", *argumentos]), sustituir, \
                 contextlib.redirect_stdout(salida), contextlib.redirect_stderr(errores):
             try:
                 script.main()
@@ -825,6 +834,40 @@ class ComprobacionesDeWorkday(ConPortalFalso):
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("[FALLO] EMP-ACME: ", r.stderr)
         self.assertIn("myworkdayjobs.com", r.stderr)
+
+
+class RedSinSalida:
+    """La red de un entorno que no deja salir la petición: urlopen lanza el URLError que da urllib ante ese error de
+    conexión. Anota cada URL que se pidió."""
+
+    def __init__(self, error):
+        self.error, self.pedidas = error, []
+
+    def __call__(self, req, timeout=None):
+        self.pedidas.append(req.full_url)
+        raise urllib.error.URLError(self.error)
+
+
+class HostBloqueadoPorLaLista(ConPortalFalso):
+    BLOQUE = preferencias([grupo("XA", nombres=["Ciudad A"])])
+
+    def test_el_proxy_de_la_nube_nombra_el_host_y_donde_agregarlo_tras_un_solo_intento(self):
+        # El proxy de Code en la nube responde 403 al CONNECT de un host fuera de la lista de dominios
+        red = RedSinSalida(OSError("Tunnel connection failed: 403 Forbidden"))
+        r, errores = self.buscar(self.BLOQUE, WorkdayFalso([]), codigo_esperado=1, red=red)
+        self.assertEqual(red.pedidas, [WorkdayFalso.HOST + "/robots.txt"])
+        fallo = next(linea for linea in errores.splitlines() if linea.startswith("[FALLO] EMP-ACME: "))
+        self.assertTrue(fallo.endswith(": acme.wd1.myworkdayjobs.com"), fallo)
+        self.assertIn("lista de dominios del entorno de la nube", fallo)
+        self.assertIn("claude.ai/code (entorno → red → Custom)", fallo)
+        self.assertNotIn("no se pudo leer", r["error"])
+
+    def test_sin_red_por_otra_causa_conserva_el_mensaje_del_robots_txt(self):
+        red = RedSinSalida(OSError("[Errno -3] Temporary failure in name resolution"))
+        r, _ = self.buscar(self.BLOQUE, WorkdayFalso([]), codigo_esperado=1, red=red)
+        self.assertEqual(len(red.pedidas), 3)
+        self.assertIn(f"no se pudo leer {WorkdayFalso.HOST}/robots.txt", r["error"])
+        self.assertNotIn("lista de dominios", r["error"])
 
 
 class AdaptadorDeEightfold(ConPortalFalso):
