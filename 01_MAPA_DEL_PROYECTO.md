@@ -1,6 +1,6 @@
 # 01 — Mapa y estado del proyecto
 
-**Versión:** 1.8 — 2026-10-28 — ESTADO toma las versiones de 00, 09 y 11, que documentan la integración en `main` desde Code en la nube.
+**Versión:** 1.9 — 2026-10-28 — «Fuera del proyecto» suma `/conectar-nube`, que el paso 9 de `/configurar` ofrece antes que `/conectar-web`.
 
 ## ESTADO — Punto de continuidad
 
@@ -80,7 +80,8 @@ No están en el conocimiento del proyecto. Si una sesión los necesita, hay que 
 - **`.claude/skills/configurar/`:** la skill `/configurar`, que configura la copia paso a paso según la tabla ESTADO.
 - **`.claude/skills/actualizar/` y `CAMBIOS.md`:** la skill `/actualizar`, que lleva a la copia los cambios de una versión más nueva de la plantilla sin tocar sus datos, y la lista de lo que trae cada versión. Se invoca a mano: nada avisa al abrir la copia.
 - **`.claude/skills/conectar-web/`:** la skill `/conectar-web`, que conecta un proyecto de claude.ai con el repositorio privado de GitHub de la copia, para que lea los módulos y la instantánea, o reconecta un proyecto que leía la hoja de Google. La ofrece el paso 9 de `/configurar`, en otra conversación.
-- **`.agents/skills/`:** un puntero por skill, con su mismo nombre y descripción, que remite a la skill completa de `.claude/skills/`. Existen para que otros agentes, que leen esa carpeta y no `.claude/skills/` (Antigravity, Gemini CLI), encuentren `/configurar`, `/actualizar` y `/conectar-web`; las skills se editan en `.claude/skills/` y el puntero solo cambia si cambia su nombre o su descripción.
+- **`.claude/skills/conectar-nube/`:** la skill `/conectar-nube`, que prepara la copia para Code en la nube: su repositorio privado de GitHub y el entorno de la nube con la lista de dominios desde 06, y una búsqueda de prueba. La ofrece el paso 9 de `/configurar`, antes que `/conectar-web`, en otra conversación.
+- **`.agents/skills/`:** un puntero por skill, con su mismo nombre y descripción, que remite a la skill completa de `.claude/skills/`. Existen para que otros agentes, que leen esa carpeta y no `.claude/skills/` (Antigravity, Gemini CLI), encuentren `/configurar`, `/actualizar`, `/conectar-web` y `/conectar-nube`; las skills se editan en `.claude/skills/` y el puntero solo cambia si cambia su nombre o su descripción.
 - **`.markdownlint-cli2.jsonc`:** reglas de formato Markdown que se revisan en Code tras editar (AGENTS.md).
 - **`herramientas/buscar.py`:** script de búsqueda del canal Code (07/BUS-ACCESO-CODE); no se sube al proyecto.
 - **`herramientas/generar_cv.py`:** generador y comprobador de CV del canal Code (09/CV-HERRAMIENTAS); no se sube al proyecto.
