@@ -41,6 +41,8 @@ El paso termina cuando cada remoto es privado, o el titular, ya avisado, decide 
 
 Python, Node y markdownlint-cli2 sirven a todos los pasos siguientes. Las herramientas del CV y las del archivo de registros se instalan en sus propios pasos, cuando hacen falta.
 
+**Code en la nube:** si `CLAUDE_CODE_REMOTE` vale `true`, la sesión corre en la nube y el hook de la copia (`herramientas/preparar_nube.sh`) ya instaló al abrirla markdownlint-cli2 y las herramientas del CV, y creó `.venv`; Python y Node vienen con la máquina de la nube. Salta los puntos 1, 2 y 4: corre solo la comprobación de cada herramienta de la tabla. Si alguna falta, no le pidas al titular comandos de instalación: dile que el hook de la nube falló y qué aviso dio al abrir la sesión (empieza con «Hook de la nube de ChambaKit»). Si no ves el aviso, repítelo con `CLAUDE_CODE_REMOTE=true bash herramientas/preparar_nube.sh`, que solo instala lo que falta.
+
 1. **Sistema:** detecta el sistema operativo con `uname -s`: `Linux`; `Darwin` es macOS; `MINGW…`, `MSYS…` o un `uname` inexistente (PowerShell) es Windows. En Linux, lee `ID` e `ID_LIKE` en `/etc/os-release`: `dnf` sirve a Fedora y derivados; `apt`, a Debian, Ubuntu y derivados. En macOS el gestor es Homebrew (`brew`) y en Windows, `winget`.
 2. **Aviso:** si el sistema no es Linux, dile al titular que ChambaKit solo se ha probado en Linux, así que un fallo puede venir de ahí.
 3. **Revisión:** corre la comprobación de cada herramienta de la tabla. La que ya cumple no se toca.
@@ -124,7 +126,7 @@ Llena `05_MAPA_HABILIDADES_Y_ROLES.md` relacionando lo que ya está en 02 y 04, 
 
 Redacta el CV base de `03_CV_BASE.md` en español e inglés desde 02, con las reglas de 03 (CV-REGLAS y los acuerdos por defecto de CV-DECISIONES) y de 09 (CV-SINTESIS y CV-PLANTILLA), y genera el primero con el color que elija el titular.
 
-1. **Herramientas del CV:** revisa e instala, con permiso, las de la tabla, igual que en el paso 2: mismo sistema y gestor, mismos tropiezos con `sudo` y el `PATH`. En Windows, si `soffice` no aparece, falta en el `PATH` la carpeta `program` de LibreOffice (normalmente `C:\Program Files\LibreOffice\program`).
+1. **Herramientas del CV:** revisa e instala, con permiso, las de la tabla, igual que en el paso 2: mismo sistema y gestor, mismos tropiezos con `sudo` y el `PATH`. En Code en la nube, solo compruébalas, como dice el paso 2. En Windows, si `soffice` no aparece, falta en el `PATH` la carpeta `program` de LibreOffice (normalmente `C:\Program Files\LibreOffice\program`).
 
    | Herramienta | Comprobación | dnf / apt | brew | winget |
    | --- | --- | --- | --- | --- |
@@ -187,6 +189,8 @@ Crea el archivo de registros `ChambaKit_Registros.xlsx` en la raíz de la copia 
    | Windows | `py -3 -m venv .venv` | `.venv\Scripts\python.exe -m pip install openpyxl tzdata` (Windows no trae la base de zonas horarias) | `.venv\Scripts\python.exe -I -c "import openpyxl; print(openpyxl.__version__)"` |
 
    En Debian y Ubuntu, si crear el entorno falla por `ensurepip`, falta el paquete del sistema: `sudo apt install python3-venv`, que corre el titular (paso 2, «Instalación»). El punto termina cuando la comprobación da una versión.
+
+   **Code en la nube:** el hook ya creó `.venv` con `openpyxl` al abrir la sesión, y lo vuelve a crear en cada sesión, porque `.venv` no viaja con el repositorio. No muestres los comandos ni pidas permiso: corre solo la comprobación de Linux. Si no da una versión, dile al titular que el hook de la nube falló y qué aviso dio, como en el paso 2 («Code en la nube»).
 3. **Crear el archivo:** `.venv/bin/python -I herramientas/registros.py crear` (en Windows, con `.venv\Scripts\python.exe`). Su salida lista las siete pestañas de 11/REG-ESQUEMA; si dice que el archivo ya existe, no lo toques y pregúntale al titular de dónde salió.
 4. **Cierre:** 00 («Registros») ya nombra el archivo, así que no se edita. En ESTADO, las filas de 00, 10 y 11 quedan «Configurado», con los siguientes pasos «Registrar desde Code con `herramientas/registros.py` (11/REG-LOCAL); si hay proyecto web, volver a pegarlo en «Instrucciones» cada vez que cambie» para 00, «Analizar tendencias en Code cuando haya muestras comparables» para 10 y «Cambiar columnas solo según REG-DECISIONES («Encabezados»)» para 11.
 

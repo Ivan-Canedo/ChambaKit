@@ -1,6 +1,6 @@
 # 01 — Mapa y estado del proyecto
 
-**Versión:** 1.6 — 2026-10-27 — El inventario lista `/conectar-web`, que conecta el proyecto web con el repositorio privado de la copia.
+**Versión:** 1.7 — 2026-10-28 — El inventario lista el hook de la nube, que prepara cada sesión de Code en la nube.
 
 ## ESTADO — Punto de continuidad
 
@@ -84,5 +84,6 @@ No están en el conocimiento del proyecto. Si una sesión los necesita, hay que 
 - **`.markdownlint-cli2.jsonc`:** reglas de formato Markdown que se revisan en Code tras editar (AGENTS.md).
 - **`herramientas/buscar.py`:** script de búsqueda del canal Code (07/BUS-ACCESO-CODE); no se sube al proyecto.
 - **`herramientas/generar_cv.py`:** generador y comprobador de CV del canal Code (09/CV-HERRAMIENTAS); no se sube al proyecto.
+- **`.claude/settings.json` y `herramientas/preparar_nube.sh`:** el hook que, al abrir una sesión de Code en la nube, instala las herramientas y crea `.venv`; en Code local no hace nada (ADR 0007). Lo comprueba `/configurar` en los pasos 2 y 8.
 - **`herramientas/registros.py` y `.venv/`:** la herramienta del archivo de registros y el entorno virtual de Python con que corre (11/REG-LOCAL); no se suben al proyecto.
 - **`README.md`, `LICENSE`, `CONTRIBUTING.md`, `CONTEXT.md`, `docs/`, `herramientas/auditar_terminos.py` y `herramientas/pruebas/`:** presentación y licencia de la plantilla, y material de quien la mantiene; el titular no los necesita.
