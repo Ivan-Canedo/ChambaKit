@@ -31,8 +31,20 @@ _Avoid_: migración, sincronización, merge
 ## Uso
 
 **Canal**:
-Dónde se usa ChambaKit: Code (un agente con terminal sobre la copia, sea Claude Code, Antigravity u otro) o Web (un proyecto de claude.ai). Los separa si se llega a los portales y a los scripts, no qué agente se usa. Solo Code hace búsquedas y escribe los registros; Web consulta y hace comprobaciones puntuales.
-_Avoid_: modo, entorno, Local
+Dónde se usa ChambaKit: Code (un agente con terminal sobre la copia, sea Claude Code, Antigravity u otro, en el equipo del titular o en la nube) o Web (un proyecto de claude.ai). Los separa si se llega a los portales y a los scripts, no qué agente se usa ni dónde corre. Solo Code hace búsquedas y escribe los registros; Web consulta y hace comprobaciones puntuales.
+_Avoid_: modo, entorno, Local, canal Nube
+
+**Code local**:
+El canal Code en el equipo del titular, sobre su carpeta de la copia.
+_Avoid_: modo local
+
+**Code en la nube**:
+El canal Code en una sesión de Claude Code en la nube (claude.ai/code o la pestaña Code de la app), sobre un clon nuevo del repositorio privado de la copia. Solo llega a los portales que estén en la lista de dominios del entorno.
+_Avoid_: canal Nube, Claude Code web, remoto
+
+**Entorno de la nube**:
+La configuración en claude.ai/code con la que arranca cada sesión de Code en la nube: la lista de dominios y el script de instalación. Vive en la cuenta del titular, no en la copia.
+_Avoid_: entorno, sandbox, VM
 
 **Agente**:
 El asistente de IA que trabaja con el titular. En el canal Code puede ser cualquiera con terminal; en el canal Web, solo Claude.
