@@ -62,11 +62,12 @@ class HostBloqueado(Fallo):
 
 
 class IpBloqueada(Fallo):
-    """En Code en la nube, el sitio responde HTTP 429 con el «error code: 1015» de Cloudflare: bloquea las IP de la
-    nube, como Workable (07/BUS-ACCESO-CODE). No se reintenta: la empresa se busca en Code local."""
+    """En Code en la nube, el sitio responde HTTP 429 con el «error code: 1015» de Cloudflare o con un Retry-After de
+    más de un minuto: bloquea las IP de la nube, como Workable (07/BUS-ACCESO-CODE). No se reintenta, porque esperar
+    no lo resuelve: la empresa se busca en Code local."""
 
-    def __init__(self, host):
-        super().__init__(f"{host} bloquea las IP de Code en la nube (HTTP 429, «error code: 1015» de Cloudflare); "
+    def __init__(self, host, motivo):
+        super().__init__(f"{host} bloquea las IP de Code en la nube (HTTP 429, {motivo}); "
                          "busca esta empresa en Code local", 429)
         self.host = host
 
@@ -205,14 +206,20 @@ def pedir(url, cuerpo=None, intentos=3, como_json=True, extra=None):
             with urllib.request.urlopen(req, timeout=60) as r:
                 return json.load(r) if como_json else r.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as e:
-            if (e.code == 429 and os.environ.get("CLAUDE_CODE_REMOTE") == "true"
-                    and b"error code: 1015" in e.read(2000)):
-                raise IpBloqueada(urllib.parse.urlsplit(url).hostname) from e
+            pedida = (e.headers.get("Retry-After") if e.headers else None) or ""
+            if e.code == 429 and os.environ.get("CLAUDE_CODE_REMOTE") == "true":
+                # Workable responde así a las IP de la nube: con su propia página de error y un Retry-After de horas
+                # si se le pide como navegador, o con el «error code: 1015» de Cloudflare si no
+                if b"error code: 1015" in e.read(2000):
+                    raise IpBloqueada(urllib.parse.urlsplit(url).hostname, "«error code: 1015» de Cloudflare") from e
+                if pedida.isdigit() and int(pedida) > 60:
+                    segundos = int(pedida)
+                    plazo = f"{round(segundos / 3600, 1):g} h" if segundos >= 3600 else f"{round(segundos / 60)} min"
+                    raise IpBloqueada(urllib.parse.urlsplit(url).hostname, f"pide esperar {plazo}") from e
             if (e.code < 500 and e.code != 429) or i == intentos - 1:
                 raise Fallo(f"HTTP {e.code} en {url}", e.code) from e
             if e.code == 429:
                 # El sitio pide bajar el ritmo: se espera lo que diga Retry-After, hasta un minuto
-                pedida = (e.headers.get("Retry-After") if e.headers else None) or ""
                 espera = min(int(pedida), 60) if pedida.isdigit() else 5 * espera
         # OSError: también el timeout de lectura, que en Python 3.9 todavía no es TimeoutError
         except (OSError, http.client.HTTPException, json.JSONDecodeError) as e:

@@ -913,6 +913,7 @@ class WorkableEnLaNube(ConPortalFalso):
     BLOQUE = preferencias([grupo("XA", nombres=["Ciudad A"])])
     # Lo que responde Cloudflare cuando Workable bloquea las IP de la nube
     BLOQUEO = b"error code: 1015"
+    PAGINA_429 = b"<!DOCTYPE html><html><head><title>Error 429 - Internal Server Error</title></head></html>"
 
     def test_en_la_nube_el_bloqueo_de_cloudflare_manda_a_code_local_tras_un_solo_intento(self):
         red = RedConLimite(self.BLOQUEO)
@@ -930,6 +931,24 @@ class WorkableEnLaNube(ConPortalFalso):
         self.assertEqual(len(red.pedidas), 3)
         self.assertEqual(self.esperas, [7, 7])
         self.assertIn(f"no se pudo leer {WorkableFalso.SITIO}/robots.txt (HTTP 429", r["error"])
+        self.assertNotIn("Code local", r["error"])
+
+    def test_en_la_nube_un_retry_after_de_horas_manda_a_code_local_tras_un_solo_intento(self):
+        # Lo que responde Workable a las IP de la nube si se le pide como navegador: su página, sin el 1015
+        red = RedConLimite(self.PAGINA_429, retry_after="55291")
+        r, errores = self.buscar(self.BLOQUE, WorkableFalso([]), codigo_esperado=1, red=red, nube=True)
+        self.assertEqual(red.pedidas, [WorkableFalso.SITIO + "/robots.txt"])
+        self.assertEqual(self.esperas, [])
+        fallo = next(linea for linea in errores.splitlines() if linea.startswith("[FALLO] EMP-ACME: "))
+        self.assertIn("apply.workable.com bloquea las IP de Code en la nube (HTTP 429, pide esperar 15.4 h)", fallo)
+        self.assertIn("busca esta empresa en Code local", fallo)
+        self.assertNotIn("no se pudo leer", r["error"])
+
+    def test_en_code_local_un_retry_after_de_horas_se_reintenta_esperando_hasta_un_minuto(self):
+        red = RedConLimite(self.PAGINA_429, retry_after="55291")
+        r, _ = self.buscar(self.BLOQUE, WorkableFalso([]), codigo_esperado=1, red=red)
+        self.assertEqual(len(red.pedidas), 3)
+        self.assertEqual(self.esperas, [60, 60])
         self.assertNotIn("Code local", r["error"])
 
     def test_en_la_nube_un_429_con_otro_cuerpo_se_reintenta_con_retry_after(self):

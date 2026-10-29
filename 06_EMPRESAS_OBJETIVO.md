@@ -1,6 +1,6 @@
 # 06 — Empresas objetivo y fichas
 
-**Versión:** 1.4 — 2026-10-28 — CAT-PLATAFORMAS da los hosts de cada plataforma para la lista de dominios del entorno de la nube y una vacante de Eightfold se lee por su API; CAT-REGLAS manda el alta en la nube a 07.
+**Versión:** 1.5 — 2026-10-29 — CAT-PLATAFORMAS describe el 429 real con que Workable bloquea las IP de la nube.
 **Estado:** plantilla sin empresas. Las agrega el paso 7 de `/configurar` (Empresas), cada una con su ficha y la configuración de su plataforma de reclutamiento.
 
 ## CAT-EMPRESAS — Catálogo
@@ -99,7 +99,7 @@ Lo que pone cada plataforma en el bloque de configuración de una ficha y cómo 
 - **Detalle:** `GET https://apply.workable.com/api/v2/accounts/<cuenta>/jobs/<shortcode>`.
 - **Vigencia:** `state`. `published` = publicada; cualquier otro valor sale como «Revisar».
 - **Comprobación de ID:** el `shortcode` del detalle es el pedido.
-- **Code en la nube:** no funciona. Workable bloquea las IP de la nube con un HTTP 429 de Cloudflare (`error code: 1015`); el script falla tras un solo intento y la empresa se busca en Code local (07/BUS-ACCESO-CODE).
+- **Code en la nube:** no funciona. Workable bloquea las IP de la nube con un HTTP 429: su propia página de error con un `Retry-After` de horas, o el `error code: 1015` de Cloudflare; el script falla tras un solo intento y la empresa se busca en Code local (07/BUS-ACCESO-CODE).
 
 | Columna | Campo del listado |
 | --- | --- |
